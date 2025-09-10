@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Network Monitor - Advanced Analytics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 2rem 1.5rem;
+            box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #4f46e5;
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            text-decoration: none;
+            color: #6b7280;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            transform: translateX(4px);
+        }
+
+        .nav-link i {
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .time-filter {
+            display: flex;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 0.5rem;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .time-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            background: transparent;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .time-btn.active {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+
+        /* Dashboard Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        .icon-users { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        .icon-devices { background: linear-gradient(135deg, #10b981, #047857); }
+        .icon-traffic { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .icon-websites { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .metric-change {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+
+        .change-positive { color: #10b981; }
+        .change-negative { color: #ef4444; }
+
+        /* User Management Section */
+        .user-management {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(107, 114, 128, 0.1);
+            color: #374151;
+            border: 1px solid rgba(107, 114, 128, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(107, 114, 128, 0.2);
+        }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(229, 231, 235, 0.5);
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        .table th {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+        }
+
+        .table td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(229, 231, 235, 0.3);
+        }
+
+        .table tr:hover {
+            background: rgba(79, 70, 229, 0.05);
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-active {
+            background: rgba(16, 185, 129, 0.1);
+            color: #047857;
+        }
+
+        .status-inactive {
+            background: rgba(107, 114, 128, 0.1);
+            color: #374151;
+        }
+
+        /* Charts */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 1rem;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6b7280;
+        }
+
+        .close-btn:hover {
+            color: #374151;
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            background: white;
+        }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #4f46e5;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                display: none;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        /* User Timeline */
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0.75rem;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, #4f46e5, #7c3aed);
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 1.5rem;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 1rem;
+            border-radius: 0.75rem;
+            border-left: 4px solid #4f46e5;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -2.25rem;
+            top: 1rem;
+            width: 12px;
+            height: 12px;
+            background: #4f46e5;
+            border-radius: 50%;
+            border: 3px solid white;
+        }
+
+        .timeline-time {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin-bottom: 0.5rem;
+        }
+
+        .timeline-content {
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .timeline-meta {
+            font-size: 0.8rem;
+            color: #9ca3af;
+            margin-top: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="logo">
+                <i class="fas fa-network-wired"></i>
+                <span>NetMonitor Pro</span>
+            </div>
+            
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="#" class="nav-link active" data-section="overview">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Overview</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="users">
+                        <i class="fas fa-users"></i>
+                        <span>User Management</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="devices">
+                        <i class="fas fa-laptop"></i>
+                        <span>Devices</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="traffic">
+                        <i class="fas fa-exchange-alt"></i>
+                        <span>Traffic Analysis</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="websites">
+                        <i class="fas fa-globe"></i>
+                        <span>Website Analytics</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="content">
+                        <i class="fas fa-file-alt"></i>
+                        <span>Content Analysis</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="monitoring">
+                        <i class="fas fa-eye"></i>
+                        <span>Live Monitoring</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="settings">
+                        <i class="fas fa-cog"></i>
+                        <span>Settings</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <h1 id="page-title">Network Overview</h1>
+                <div class="time-filter">
+                    <button class="time-btn active" data-period="1h">1 Hour</button>
+                    <button class="time-btn" data-period="24h">24 Hours</button>
+                    <button class="time-btn" data-period="7d">7 Days</button>
+                    <button class="time-btn" data-period="30d">30 Days</button>
+                </div>
+            </header>
+
+            <!-- Overview Section -->
+            <section id="overview-section" class="section active">
+                <!-- Metrics Cards -->
+                <div class="dashboard-grid">
+                    <div class="card fade-in">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">Active Users</div>
+                                <div class="metric-value" id="active-users">0</div>
+                                <div class="metric-label">Currently online</div>
+                                <div class="metric-change change-positive">
+                                    <i class="fas fa-arrow-up"></i>
+                                    <span>+12% from yesterday</span>
+                                </div>
+                            </div>
+                            <div class="card-icon icon-users">
+                                <i class="fas fa-users"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card fade-in">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">Connected Devices</div>
+                                <div class="metric-value" id="connected-devices">0</div>
+                                <div class="metric-label">Active on network</div>
+                                <div class="metric-change change-positive">
+                                    <i class="fas fa-arrow-up"></i>
+                                    <span>+3 new devices</span>
+                                </div>
+                            </div>
+                            <div class="card-icon icon-devices">
+                                <i class="fas fa-laptop"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card fade-in">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">Data Transfer</div>
+                                <div class="metric-value" id="data-transfer">0 GB</div>
+                                <div class="metric-label">Total bandwidth used</div>
+                                <div class="metric-change change-negative">
+                                    <i class="fas fa-arrow-down"></i>
+                                    <span>-5% from last week</span>
+                                </div>
+                            </div>
+                            <div class="card-icon icon-traffic">
+                                <i class="fas fa-exchange-alt"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card fade-in">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">Websites Visited</div>
+                                <div class="metric-value" id="websites-visited">0</div>
+                                <div class="metric-label">Unique domains accessed</div>
+                                <div class="metric-change change-positive">
+                                    <i class="fas fa-arrow-up"></i>
+                                    <span>+8% increase</span>
+                                </div>
+                            </div>
+                            <div class="card-icon icon-websites">
+                                <i class="fas fa-globe"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">Traffic Over Time</div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="traffic-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">Top Applications</div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="applications-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- User Management Section -->
+            <section id="users-section" class="section" style="display: none;">
+                <div class="user-management">
+                    <div class="section-header">
+                        <h2 class="section-title">User Management</h2>
+                        <button class="btn btn-primary" onclick="openUserModal()">
+                            <i class="fas fa-plus"></i>
+                            Add User
+                        </button>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Devices</th>
+                                    <th>Last Activity</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body">
+                                <!-- Users will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- User Analytics -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">User Activity Analytics</div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="user-activity-chart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Other sections will be added here -->
+            <section id="devices-section" class="section" style="display: none;">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </section>
+
+            <section id="traffic-section" class="section" style="display: none;">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </section>
+
+            <section id="websites-section" class="section" style="display: none;">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </section>
+
+            <section id="content-section" class="section" style="display: none;">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </section>
+
+            <section id="monitoring-section" class="section" style="display: none;">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </section>
+
+            <section id="settings-section" class="section" style="display: none;">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- User Modal -->
+    <div id="user-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Add New User</h3>
+                <button class="close-btn" onclick="closeUserModal()">&times;</button>
+            </div>
+            
+            <form id="user-form">
+                <div class="form-group">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" class="form-input" name="full_name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-input" name="username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Role</label>
+                    <select class="form-select" name="role">
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                        <option value="guest">Guest</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Time Zone</label>
+                    <select class="form-select" name="time_zone">
+                        <option value="UTC">UTC</option>
+                        <option value="America/New_York">Eastern Time</option>
+                        <option value="America/Chicago">Central Time</option>
+                        <option value="America/Denver">Mountain Time</option>
+                        <option value="America/Los_Angeles">Pacific Time</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="submit" class="btn btn-primary">Create User</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeUserModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentPeriod = '24h';
+        let currentSection = 'overview';
+        let charts = {};
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeNavigation();
+            initializeTimeFilter();
+            loadOverviewData();
+            initializeCharts();
+            
+            // Auto-refresh data every 30 seconds
+            setInterval(refreshCurrentSection, 30000);
+        });
+
+        // Navigation
+        function initializeNavigation() {
+            const navLinks = document.querySelectorAll('.nav-link');
+            
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Update active nav link
+                    navLinks.forEach(l => l.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Show corresponding section
+                    const section = this.dataset.section;
+                    showSection(section);
+                });
+            });
+        }
+
+        function showSection(sectionName) {
+            // Hide all sections
+            const sections = document.querySelectorAll('.section');
+            sections.forEach(section => section.style.display = 'none');
+            
+            // Show target section
+            const targetSection = document.getElementById(`${sectionName}-section`);
+            if (targetSection) {
+                targetSection.style.display = 'block';
+                targetSection.classList.add('fade-in');
+            }
+            
+            // Update page title
+            const titles = {
+                'overview': 'Network Overview',
+                'users': 'User Management',
+                'devices': 'Device Management',
+                'traffic': 'Traffic Analysis',
+                'websites': 'Website Analytics',
+                'content': 'Content Analysis',
+                'monitoring': 'Live Monitoring',
+                'settings': 'Settings'
+            };
+            
+            document.getElementById('page-title').textContent = titles[sectionName] || 'Dashboard';
+            currentSection = sectionName;
+            
+            // Load section-specific data
+            loadSectionData(sectionName);
+        }
+
+        // Time filter
+        function initializeTimeFilter() {
+            const timeButtons = document.querySelectorAll('.time-btn');
+            
+            timeButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // Update active button
+                    timeButtons.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Update current period
+                    currentPeriod = this.dataset.period;
+                    
+                    // Refresh current section data
+                    refreshCurrentSection();
+                });
+            });
+        }
+
+        // Data loading functions
+        async function loadOverviewData() {
+            try {
+                // Load summary statistics
+                const response = await fetch(`/api/analytics/summary?period=${currentPeriod}`);
+                const data = await response.json();
+                
+                // Update metrics
+                document.getElementById('active-users').textContent = data.summary?.total_users || 0;
+                document.getElementById('connected-devices').textContent = data.summary?.total_devices || 0;
+                document.getElementById('websites-visited').textContent = data.summary?.recent_sessions || 0;
+                
+                // Format data transfer
+                const totalBytes = data.summary?.total_traffic_bytes || 0;
+                const totalGB = (totalBytes / (1024 * 1024 * 1024)).toFixed(2);
+                document.getElementById('data-transfer').textContent = `${totalGB} GB`;
+                
+            } catch (error) {
+                console.error('Error loading overview data:', error);
+            }
+        }
+
+        async function loadSectionData(sectionName) {
+            switch (sectionName) {
+                case 'users':
+                    await loadUsersData();
+                    break;
+                case 'devices':
+                    await loadDevicesData();
+                    break;
+                case 'traffic':
+                    await loadTrafficData();
+                    break;
+                case 'websites':
+                    await loadWebsitesData();
+                    break;
+                case 'content':
+                    await loadContentData();
+                    break;
+                case 'monitoring':
+                    await loadMonitoringData();
+                    break;
+            }
+        }
+
+        async function loadUsersData() {
+            try {
+                const response = await fetch('/api/users');
+                const data = await response.json();
+                
+                const tbody = document.getElementById('users-table-body');
+                tbody.innerHTML = '';
+                
+                data.users?.forEach(user => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>
+                            <div style="font-weight: 500;">${user.full_name}</div>
+                            <div style="font-size: 0.8rem; color: #6b7280;">@${user.username}</div>
+                        </td>
+                        <td>${user.email}</td>
+                        <td>
+                            <span class="status-badge ${user.role === 'admin' ? 'status-active' : 'status-inactive'}">
+                                ${user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                            </span>
+                        </td>
+                        <td>${user.device_count || 0}</td>
+                        <td>2 hours ago</td>
+                        <td>
+                            <span class="status-badge ${user.is_active ? 'status-active' : 'status-inactive'}">
+                                ${user.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-secondary" onclick="viewUserDetails(${user.id})">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+            } catch (error) {
+                console.error('Error loading users data:', error);
+            }
+        }
+
+        // Chart initialization
+        function initializeCharts() {
+            // Traffic over time chart
+            const trafficCtx = document.getElementById('traffic-chart').getContext('2d');
+            charts.traffic = new Chart(trafficCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Traffic (MB)',
+                        data: [],
+                        borderColor: '#4f46e5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Applications chart
+            const appsCtx = document.getElementById('applications-chart').getContext('2d');
+            charts.applications = new Chart(appsCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['HTTPS', 'HTTP', 'DNS', 'SSH', 'Other'],
+                    datasets: [{
+                        data: [45, 25, 15, 10, 5],
+                        backgroundColor: [
+                            '#4f46e5',
+                            '#7c3aed',
+                            '#06b6d4',
+                            '#10b981',
+                            '#f59e0b'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // User activity chart
+            const userActivityCtx = document.getElementById('user-activity-chart');
+            if (userActivityCtx) {
+                charts.userActivity = new Chart(userActivityCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Sessions',
+                            data: [],
+                            backgroundColor: 'rgba(79, 70, 229, 0.8)'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Modal functions
+        function openUserModal() {
+            document.getElementById('user-modal').style.display = 'block';
+        }
+
+        function closeUserModal() {
+            document.getElementById('user-modal').style.display = 'none';
+            document.getElementById('user-form').reset();
+        }
+
+        // User form submission
+        document.getElementById('user-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const userData = Object.fromEntries(formData.entries());
+            
+            try {
+                const response = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(userData)
+                });
+                
+                if (response.ok) {
+                    closeUserModal();
+                    loadUsersData(); // Refresh users table
+                    showNotification('User created successfully', 'success');
+                } else {
+                    const error = await response.json();
+                    showNotification(error.error || 'Failed to create user', 'error');
+                }
+            } catch (error) {
+                console.error('Error creating user:', error);
+                showNotification('Failed to create user', 'error');
+            }
+        });
+
+        // Utility functions
+        function refreshCurrentSection() {
+            if (currentSection === 'overview') {
+                loadOverviewData();
+            } else {
+                loadSectionData(currentSection);
+            }
+        }
+
+        function viewUserDetails(userId) {
+            // Implement user details view
+            console.log('View user details:', userId);
+        }
+
+        function showNotification(message, type) {
+            // Simple notification system
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 1rem 1.5rem;
+                border-radius: 0.5rem;
+                color: white;
+                font-weight: 500;
+                z-index: 1001;
+                background: ${type === 'success' ? '#10b981' : '#ef4444'};
+            `;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Placeholder functions for other data loading
+        async function loadDevicesData() {
+            console.log('Loading devices data...');
+        }
+
+        async function loadTrafficData() {
+            console.log('Loading traffic data...');
+        }
+
+        async function loadWebsitesData() {
+            console.log('Loading websites data...');
+        }
+
+        async function loadContentData() {
+            console.log('Loading content data...');
+        }
+
+        async function loadMonitoringData() {
+            console.log('Loading monitoring data...');
+        }
+
+        // Close modal when clicking outside
+        window.addEventListener('click', function(e) {
+            const modal = document.getElementById('user-modal');
+            if (e.target === modal) {
+                closeUserModal();
+            }
+        });
+    </script>
+</body>
+</html>
+

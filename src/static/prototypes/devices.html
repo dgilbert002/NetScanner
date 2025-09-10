@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Devices Prototype</title>
+  <link rel="stylesheet" href="/static/prototypes/style.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="nav">
+      <div class="logo">NetScanner</div>
+      <a href="/prototypes/dashboard">Dashboard</a>
+      <a href="/prototypes/live">Live</a>
+      <a href="/prototypes/profiles">Profiles</a>
+      <a class="active" href="/prototypes/devices">Devices</a>
+      <a href="/groups">Manage Profiles</a>
+      <a href="/">Back to App</a>
+    </aside>
+    <main class="content">
+      <div class="toolbar">
+        <h1>Devices</h1>
+        <div class="filters">
+          <input placeholder="Search devices…" />
+        </div>
+      </div>
+      <section class="grid">
+        <div class="card">
+          <div class="title">Dean_Laptop</div>
+          <div class="muted">192.168.50.45 • 24:AF:06:…</div>
+          <div class="actions">
+            <button>Rename</button>
+            <button>Assign Profile</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="title">Pixel 7 Pro</div>
+          <div class="muted">192.168.50.4 • 9C:2E:A1:…</div>
+          <div class="actions">
+            <button>Rename</button>
+            <button>Assign Profile</button>
+          </div>
+        </div>
+      </section>
+      <section class="panel">
+        <h2>Selected Device</h2>
+        <div class="placeholder">Summary, recent connections, top domains</div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
+

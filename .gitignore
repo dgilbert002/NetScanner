@@ -1,0 +1,36 @@
+﻿# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.code-workspace
+
+# Env
+.env
+*.env
+
+# Data
+src/database/*.db
+src/database/*.sqlite
+
+# Logs
+logs/
+*.log
+
+# Cache
+.cache/
+
+# Build
+build/
+dist/
+*.egg-info/
+

@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Live Prototype</title>
+  <link rel="stylesheet" href="/static/prototypes/style.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="nav">
+      <div class="logo">NetScanner</div>
+      <a href="/prototypes/dashboard">Dashboard</a>
+      <a class="active" href="/prototypes/live">Live</a>
+      <a href="/prototypes/profiles">Profiles</a>
+      <a href="/prototypes/devices">Devices</a>
+      <a href="/groups">Manage Profiles</a>
+      <a href="/">Back to App</a>
+    </aside>
+    <main class="content">
+      <div class="toolbar">
+        <h1>Live</h1>
+        <div class="filters">
+          <button>All</button><button>HTTPS</button><button>DNS</button><button>TCP</button>
+        </div>
+      </div>
+      <section class="panel">
+        <h2>Live Traffic (Last 5 Minutes)</h2>
+        <div class="table">
+          <div class="thead">
+            <div>Time</div><div>Device</div><div>Source</div><div>Destination</div><div>Protocol</div><div>Bytes</div>
+          </div>
+          <div class="tbody">
+            <div class="row placeholder-row">Rows stream here…</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
+

@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Group Management - NetScanner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 24px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #718096;
+            color: white;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 20px;
+        }
+
+        .sidebar {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
+        }
+
+        .content {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .group-list {
+            list-style: none;
+        }
+
+        .group-item {
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            background: #f7fafc;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .group-item:hover {
+            background: #edf2f7;
+        }
+
+        .group-item.active {
+            background: #e6fffa;
+            border-color: #38b2ac;
+        }
+
+        .group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .group-name {
+            font-weight: 600;
+            color: #2d3748;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .group-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .group-count {
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .group-description {
+            color: #718096;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .device-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .device-card {
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            transition: all 0.3s;
+        }
+
+        .device-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .device-card.selected {
+            background: #e6fffa;
+            border-color: #38b2ac;
+        }
+
+        .device-name {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+
+        .device-info {
+            color: #718096;
+            font-size: 14px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            color: #4a5568;
+            font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .color-picker {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .color-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+
+        .color-option.selected {
+            border-color: #2d3748;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .action-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .suggestion-card {
+            background: #f0fff4;
+            border: 1px solid #9ae6b4;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+
+        .suggestion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .suggestion-name {
+            font-weight: 600;
+            color: #22543d;
+        }
+
+        .suggestion-reason {
+            background: #68d391;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #718096;
+            font-weight: 500;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            color: #4a5568;
+        }
+
+        .tab.active {
+            color: #667eea;
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Device Group Management</h1>
+            <div>
+                <a href="/" class="btn btn-secondary">← Back to Dashboard</a>
+                <button class="btn btn-primary" onclick="showCreateGroupModal()">+ Create Group</button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <h3 style="margin-bottom: 15px;">Groups</h3>
+                <ul class="group-list" id="groupList">
+                    <!-- Groups will be loaded here -->
+                </ul>
+                <button class="btn btn-success" style="width: 100%; margin-top: 15px;" onclick="loadSuggestions()">
+                    💡 Get Smart Suggestions
+                </button>
+            </div>
+
+            <div class="content">
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('devices')">Devices</button>
+                    <button class="tab" onclick="switchTab('analytics')">Analytics</button>
+                    <button class="tab" onclick="switchTab('traffic')">Live Traffic</button>
+                </div>
+
+                <div id="devicesTab" class="tab-content active">
+                    <div class="action-bar">
+                        <input type="text" class="search-box" placeholder="Search devices..." id="deviceSearch">
+                        <button class="btn btn-primary" onclick="addDevicesToGroup()">Add Selected</button>
+                        <button class="btn btn-danger" onclick="removeDevicesFromGroup()">Remove Selected</button>
+                    </div>
+
+                    <div id="groupDetails">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📁</div>
+                            <p>Select a group to view and manage devices</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="analyticsTab" class="tab-content">
+                    <div id="groupAnalytics">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📈</div>
+                            <p>Select a group to view analytics</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="trafficTab" class="tab-content">
+                    <div id="groupTraffic">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🌐</div>
+                            <p>Select a group to view live traffic</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create/Edit Group Modal -->
+    <div id="groupModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">Create New Group</h2>
+            </div>
+            <form id="groupForm">
+                <div class="form-group">
+                    <label class="form-label">Group Name *</label>
+                    <input type="text" class="form-input" id="groupName" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-input" id="groupDescription" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Color</label>
+                    <div class="color-picker">
+                        <div class="color-option" style="background: #3498db" data-color="#3498db"></div>
+                        <div class="color-option" style="background: #e74c3c" data-color="#e74c3c"></div>
+                        <div class="color-option" style="background: #2ecc71" data-color="#2ecc71"></div>
+                        <div class="color-option" style="background: #f39c12" data-color="#f39c12"></div>
+                        <div class="color-option" style="background: #9b59b6" data-color="#9b59b6"></div>
+                        <div class="color-option" style="background: #1abc9c" data-color="#1abc9c"></div>
+                        <div class="color-option" style="background: #34495e" data-color="#34495e"></div>
+                        <div class="color-option" style="background: #e67e22" data-color="#e67e22"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Group</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Suggestions Modal -->
+    <div id="suggestionsModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Smart Group Suggestions</h2>
+            </div>
+            <div id="suggestionsList">
+                <!-- Suggestions will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeSuggestionsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedGroupId = null;
+        let selectedDevices = new Set();
+        let selectedColor = '#3498db';
+        let allDevices = [];
+        let currentGroups = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadGroups();
+            loadAllDevices();
+            setupColorPicker();
+            setupForm();
+        });
+
+        // Load all groups
+        async function loadGroups() {
+            try {
+                const response = await fetch('/api/v2/groups/list');
+                const groups = await response.json();
+                currentGroups = groups;
+                displayGroups(groups);
+            } catch (error) {
+                console.error('Error loading groups:', error);
+            }
+        }
+
+        // Display groups in sidebar
+        function displayGroups(groups) {
+            const groupList = document.getElementById('groupList');
+            
+            if (groups.length === 0) {
+                groupList.innerHTML = '<li class="empty-state">No groups created yet</li>';
+                return;
+            }
+
+            groupList.innerHTML = groups.map(group => `
+                <li class="group-item ${selectedGroupId === group.id ? 'active' : ''}" 
+                    onclick="selectGroup(${group.id})">
+                    <div class="group-header">
+                        <div class="group-name">
+                            <span class="group-color" style="background: ${group.color}"></span>
+                            ${group.name}
+                        </div>
+                        <span class="group-count">${group.device_count}</span>
+                    </div>
+                    ${group.description ? `<div class="group-description">${group.description}</div>` : ''}
+                </li>
+            `).join('');
+        }
+
+        // Select a group
+        async function selectGroup(groupId) {
+            selectedGroupId = groupId;
+            selectedDevices.clear();
+            
+            // Update UI
+            document.querySelectorAll('.group-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+
+            // Load group details
+            try {
+                const response = await fetch(`/api/v2/groups/${groupId}`);
+                const group = await response.json();
+                displayGroupDevices(group);
+                
+                // Load analytics if that tab is active
+                if (document.getElementById('analyticsTab').classList.contains('active')) {
+                    loadGroupAnalytics(groupId);
+                }
+                
+                // Load traffic if that tab is active
+                if (document.getElementById('trafficTab').classList.contains('active')) {
+                    loadGroupTraffic(groupId);
+                }
+            } catch (error) {
+                console.error('Error loading group details:', error);
+            }
+        }
+
+        // Display devices in a group
+        function displayGroupDevices(group) {
+            const container = document.getElementById('groupDetails');
+            
+            if (group.devices.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🖥️</div>
+                        <p>No devices in this group</p>
+                        <button class="btn btn-primary" onclick="showAddDevicesModal()">Add Devices</button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">${group.device_count}</div>
+                        <div class="stat-label">Total Devices</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${group.devices.filter(d => d.is_active).length}</div>
+                        <div class="stat-label">Active Devices</div>
+                    </div>
+                </div>
+                <div class="device-grid">
+                    ${group.devices.map(device => `
+                        <div class="device-card ${selectedDevices.has(device.id) ? 'selected' : ''}" 
+                             onclick="toggleDeviceSelection(${device.id})">
+                            <div class="device-name">${device.hostname || 'Unknown Device'}</div>
+                            <div class="device-info">
+                                <div>IP: ${device.ip_address}</div>
+                                <div>MAC: ${device.mac_address}</div>
+                                <div>Type: ${device.device_type || 'Unknown'}</div>
+                                <div>Status: ${device.is_active ? '🟢 Active' : '🔴 Inactive'}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // Load all devices (for adding to groups)
+        async function loadAllDevices() {
+            try {
+                const response = await fetch('/api/v2/devices');
+                allDevices = await response.json();
+            } catch (error) {
+                console.error('Error loading devices:', error);
+            }
+        }
+
+        // Toggle device selection
+        function toggleDeviceSelection(deviceId) {
+            if (selectedDevices.has(deviceId)) {
+                selectedDevices.delete(deviceId);
+            } else {
+                selectedDevices.add(deviceId);
+            }
+            
+            // Update UI
+            document.querySelectorAll('.device-card').forEach(card => {
+                const id = parseInt(card.getAttribute('onclick').match(/\d+/)[0]);
+                if (selectedDevices.has(id)) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            });
+        }
+
+        // Add devices to group
+        async function addDevicesToGroup() {
+            if (!selectedGroupId) {
+                alert('Please select a group first');
+                return;
+            }
+
+            if (selectedDevices.size === 0) {
+                showAddDevicesModal();
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v2/groups/${selectedGroupId}/add-devices`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        device_ids: Array.from(selectedDevices)
+                    })
+                });
+
+                const result = await response.json();
+                alert(result.message);
+                
+                // Reload
+                loadGroups();
+                selectGroup(selectedGroupId);
+            } catch (error) {
+                console.error('Error adding devices:', error);
+            }
+        }
+
+        // Remove devices from group
+        async function removeDevicesFromGroup() {
+            if (!selectedGroupId) {
+                alert('Please select a group first');
+                return;
+            }
+
+            if (selectedDevices.size === 0) {
+                alert('Please select devices to remove');
+                return;
+            }
+
+            if (!confirm(`Remove ${selectedDevices.size} device(s) from this group?`)) {
+                return;
+            }
+
+            try {
+                for (const deviceId of selectedDevices) {
+                    await fetch(`/api/v2/groups/${selectedGroupId}/remove-device`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({device_id: deviceId})
+                    });
+                }
+
+                alert('Devices removed successfully');
+                
+                // Reload
+                loadGroups();
+                selectGroup(selectedGroupId);
+            } catch (error) {
+                console.error('Error removing devices:', error);
+            }
+        }
+
+        // Show add devices modal
+        function showAddDevicesModal() {
+            // Get devices not in current group
+            const group = currentGroups.find(g => g.id === selectedGroupId);
+            const devicesInGroup = group ? group.device_ids : [];
+            const availableDevices = allDevices.filter(d => !devicesInGroup.includes(d.id));
+
+            if (availableDevices.length === 0) {
+                alert('All devices are already in this group');
+                return;
+            }
+
+            // Show device selection modal
+            const modal = document.createElement('div');
+            modal.className = 'modal active';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 700px;">
+                    <div class="modal-header">
+                        <h2 class="modal-title">Add Devices to Group</h2>
+                    </div>
+                    <div class="device-grid" style="max-height: 400px; overflow-y: auto;">
+                        ${availableDevices.map(device => `
+                            <div class="device-card" onclick="toggleTempSelection(${device.id})">
+                                <div class="device-name">${device.hostname || 'Unknown Device'}</div>
+                                <div class="device-info">
+                                    <div>IP: ${device.ip_address}</div>
+                                    <div>Type: ${device.device_type || 'Unknown'}</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancel</button>
+                        <button class="btn btn-primary" onclick="addSelectedDevices()">Add Selected</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Temporary selection for add modal
+        const tempSelection = new Set();
+        function toggleTempSelection(deviceId) {
+            if (tempSelection.has(deviceId)) {
+                tempSelection.delete(deviceId);
+                event.currentTarget.classList.remove('selected');
+            } else {
+                tempSelection.add(deviceId);
+                event.currentTarget.classList.add('selected');
+            }
+        }
+
+        // Add selected devices from modal
+        async function addSelectedDevices() {
+            if (tempSelection.size === 0) {
+                alert('Please select at least one device');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v2/groups/${selectedGroupId}/add-devices`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        device_ids: Array.from(tempSelection)
+                    })
+                });
+
+                const result = await response.json();
+                alert(result.message);
+                
+                // Close modal and reload
+                document.querySelector('.modal.active').remove();
+                tempSelection.clear();
+                loadGroups();
+                selectGroup(selectedGroupId);
+            } catch (error) {
+                console.error('Error adding devices:', error);
+            }
+        }
+
+        // Load group analytics
+        async function loadGroupAnalytics(groupId) {
+            try {
+                const response = await fetch(`/api/v2/groups/${groupId}/analytics?period=24h`);
+                const data = await response.json();
+                
+                const container = document.getElementById('groupAnalytics');
+                
+                if (!data.analytics) {
+                    container.innerHTML = '<div class="empty-state">No analytics data available</div>';
+                    return;
+                }
+
+                const analytics = data.analytics;
+                container.innerHTML = `
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value">${formatBytes(analytics.group.total_bytes)}</div>
+                            <div class="stat-label">Total Traffic</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${analytics.group.total_sessions}</div>
+                            <div class="stat-label">Sessions</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${analytics.group.total_visits}</div>
+                            <div class="stat-label">Website Visits</div>
+                        </div>
+                    </div>
+                    
+                    <h3 style="margin: 20px 0 10px;">Top Applications</h3>
+                    <div style="background: #f7fafc; padding: 15px; border-radius: 8px;">
+                        ${Object.entries(analytics.applications || {})
+                            .sort((a, b) => b[1].bytes - a[1].bytes)
+                            .slice(0, 5)
+                            .map(([app, data]) => `
+                                <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
+                                    <span>${app}</span>
+                                    <span>${formatBytes(data.bytes)}</span>
+                                </div>
+                            `).join('')}
+                    </div>
+                    
+                    <h3 style="margin: 20px 0 10px;">Device Usage</h3>
+                    <div style="background: #f7fafc; padding: 15px; border-radius: 8px;">
+                        ${analytics.devices
+                            .sort((a, b) => b.bytes - a.bytes)
+                            .map(device => `
+                                <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
+                                    <span>${device.device}</span>
+                                    <div>
+                                        <span style="margin-right: 15px;">${formatBytes(device.bytes)}</span>
+                                        <span style="color: #718096;">${device.percentage.toFixed(1)}%</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+            }
+        }
+
+        // Load group traffic
+        async function loadGroupTraffic(groupId) {
+            try {
+                const response = await fetch(`/api/v2/groups/${groupId}/traffic`);
+                const traffic = await response.json();
+                
+                const container = document.getElementById('groupTraffic');
+                
+                if (traffic.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No recent traffic</div>';
+                    return;
+                }
+
+                container.innerHTML = `
+                    <h3 style="margin-bottom: 15px;">Live Traffic (Last 5 Minutes)</h3>
+                    <div style="background: #f7fafc; border-radius: 8px; overflow: hidden;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #e2e8f0;">
+                                    <th style="padding: 10px; text-align: left;">Time</th>
+                                    <th style="padding: 10px; text-align: left;">Device</th>
+                                    <th style="padding: 10px; text-align: left;">Source</th>
+                                    <th style="padding: 10px; text-align: left;">Destination</th>
+                                    <th style="padding: 10px; text-align: left;">Protocol</th>
+                                    <th style="padding: 10px; text-align: left;">Bytes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${traffic.map(t => `
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px;">${new Date(t.time).toLocaleTimeString()}</td>
+                                        <td style="padding: 10px;">${t.device}</td>
+                                        <td style="padding: 10px;">${t.src_ip}:${t.src_port}</td>
+                                        <td style="padding: 10px;">${t.dst_ip}:${t.dst_port}</td>
+                                        <td style="padding: 10px;">${t.protocol}</td>
+                                        <td style="padding: 10px;">${formatBytes(t.bytes)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                
+                // Auto-refresh every 5 seconds
+                setTimeout(() => {
+                    if (document.getElementById('trafficTab').classList.contains('active')) {
+                        loadGroupTraffic(groupId);
+                    }
+                }, 5000);
+            } catch (error) {
+                console.error('Error loading traffic:', error);
+            }
+        }
+
+        // Load suggestions
+        async function loadSuggestions() {
+            try {
+                const response = await fetch('/api/v2/groups/suggest');
+                const suggestions = await response.json();
+                
+                const modal = document.getElementById('suggestionsModal');
+                const container = document.getElementById('suggestionsList');
+                
+                if (suggestions.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No suggestions available</div>';
+                } else {
+                    container.innerHTML = suggestions.map(suggestion => `
+                        <div class="suggestion-card">
+                            <div class="suggestion-header">
+                                <div class="suggestion-name">${suggestion.name}</div>
+                                <div class="suggestion-reason">${suggestion.reason}</div>
+                            </div>
+                            <div style="color: #718096; margin-bottom: 10px;">${suggestion.description}</div>
+                            <div style="color: #4a5568; margin-bottom: 10px;">
+                                ${suggestion.device_ids.length} devices
+                            </div>
+                            <button class="btn btn-success" onclick="createGroupFromSuggestion('${suggestion.name}', '${suggestion.description}', [${suggestion.device_ids}])">
+                                Create This Group
+                            </button>
+                        </div>
+                    `).join('');
+                }
+                
+                modal.classList.add('active');
+            } catch (error) {
+                console.error('Error loading suggestions:', error);
+            }
+        }
+
+        // Create group from suggestion
+        async function createGroupFromSuggestion(name, description, deviceIds) {
+            try {
+                // Create group
+                const response = await fetch('/api/v2/groups/create', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        name: name,
+                        description: description,
+                        color: '#48bb78'
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.group) {
+                    // Add devices to group
+                    await fetch(`/api/v2/groups/${result.group.id}/add-devices`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            device_ids: deviceIds
+                        })
+                    });
+
+                    alert('Group created successfully!');
+                    closeSuggestionsModal();
+                    loadGroups();
+                }
+            } catch (error) {
+                console.error('Error creating group:', error);
+            }
+        }
+
+        // Modal functions
+        function showCreateGroupModal() {
+            document.getElementById('modalTitle').textContent = 'Create New Group';
+            document.getElementById('groupForm').reset();
+            document.getElementById('groupModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('groupModal').classList.remove('active');
+        }
+
+        function closeSuggestionsModal() {
+            document.getElementById('suggestionsModal').classList.remove('active');
+        }
+
+        // Setup color picker
+        function setupColorPicker() {
+            document.querySelectorAll('.color-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+                    this.classList.add('selected');
+                    selectedColor = this.dataset.color;
+                });
+            });
+            
+            // Select first color by default
+            document.querySelector('.color-option').classList.add('selected');
+        }
+
+        // Setup form
+        function setupForm() {
+            document.getElementById('groupForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const name = document.getElementById('groupName').value;
+                const description = document.getElementById('groupDescription').value;
+                
+                try {
+                    const response = await fetch('/api/v2/groups/create', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            name: name,
+                            description: description,
+                            color: selectedColor
+                        })
+                    });
+
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        alert('Group created successfully!');
+                        closeModal();
+                        loadGroups();
+                    } else {
+                        alert(result.error || 'Error creating group');
+                    }
+                } catch (error) {
+                    console.error('Error creating group:', error);
+                    alert('Error creating group');
+                }
+            });
+        }
+
+        // Switch tabs
+        function switchTab(tab) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(`${tab}Tab`).classList.add('active');
+            
+            // Load data for the tab if a group is selected
+            if (selectedGroupId) {
+                if (tab === 'analytics') {
+                    loadGroupAnalytics(selectedGroupId);
+                } else if (tab === 'traffic') {
+                    loadGroupTraffic(selectedGroupId);
+                }
+            }
+        }
+
+        // Utility functions
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+    </script>
+</body>
+</html>

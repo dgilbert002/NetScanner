@@ -1,0 +1,29 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, Segoe UI, Roboto, Arial; background: #f5f7fb; color: #1f2937; }
+.layout { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+.nav { background: #111827; color: #e5e7eb; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
+.nav .logo { font-weight: 700; margin-bottom: 10px; font-size: 18px; }
+.nav a { color: #9ca3af; text-decoration: none; padding: 10px 12px; border-radius: 6px; }
+.nav a:hover { background: #1f2937; color: #e5e7eb; }
+.nav a.active { background: #374151; color: #fff; }
+.content { padding: 20px 28px; }
+.toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.filters button, .toolbar button, .toolbar input { margin-left: 8px; padding: 8px 12px; border: 1px solid #d1d5db; background: #fff; border-radius: 6px; cursor: pointer; }
+.filters .primary, .toolbar .primary { background: #6366f1; color: #fff; border: none; }
+.cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+.card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px; }
+.panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px; margin-bottom: 18px; }
+.placeholder { background: repeating-linear-gradient(45deg, #f3f4f6, #f3f4f6 10px, #eef2ff 10px, #eef2ff 20px); height: 140px; border-radius: 6px; border: 1px dashed #c7d2fe; display: flex; align-items: center; justify-content: center; color: #4b5563; }
+.placeholder.small { height: 80px; }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
+.title { font-weight: 600; }
+.muted { color: #6b7280; font-size: 12px; margin-top: 4px; }
+.actions { margin-top: 10px; display: flex; gap: 8px; }
+.table { width: 100%; }
+.thead, .row { display: grid; grid-template-columns: 160px 1fr 1fr 1fr 100px 100px; gap: 8px; padding: 8px; }
+.thead { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 6px; font-weight: 600; }
+.tbody { margin-top: 6px; }
+.row { background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 6px; }
+.placeholder-row { height: 42px; display: flex; align-items: center; color: #6b7280; }
+@media (max-width: 1100px) { .cards { grid-template-columns: repeat(2, 1fr); } .grid { grid-template-columns: repeat(2, 1fr);} .thead, .row { grid-template-columns: 140px 1fr 1fr 1fr 80px 80px; } }
+

@@ -1,0 +1,184 @@
+{
+  "Google": [
+    "google.com",
+    "googleapis.com",
+    "gstatic.com",
+    "youtube.com",
+    "ytimg.com",
+    "googlevideo.com",
+    "googleusercontent.com",
+    "gmail.com",
+    "google-analytics.com"
+  ],
+  "Facebook": [
+    "facebook.com",
+    "fbcdn.net",
+    "fb.com",
+    "messenger.com",
+    "whatsapp.com",
+    "whatsapp.net",
+    "instagram.com",
+    "cdninstagram.com"
+  ],
+  "Microsoft": [
+    "microsoft.com",
+    "windows.com",
+    "office.com",
+    "live.com",
+    "azure.com",
+    "outlook.com",
+    "office365.com",
+    "microsoftonline.com",
+    "skype.com",
+    "teams.microsoft.com"
+  ],
+  "Netflix": [
+    "netflix.com",
+    "nflxvideo.net",
+    "nflximg.com",
+    "nflxext.com"
+  ],
+  "Amazon": [
+    "amazon.com",
+    "amazonaws.com",
+    "aws.com",
+    "cloudfront.net",
+    "prime.com"
+  ],
+  "Apple": [
+    "apple.com",
+    "icloud.com",
+    "cdn-apple.com",
+    "apple-dns.net",
+    "itunes.com"
+  ],
+  "Twitter": [
+    "twitter.com",
+    "twimg.com",
+    "t.co",
+    "x.com"
+  ],
+  "LinkedIn": [
+    "linkedin.com",
+    "licdn.com"
+  ],
+  "GitHub": [
+    "github.com",
+    "githubusercontent.com",
+    "githubassets.com",
+    "github.io"
+  ],
+  "Zoom": [
+    "zoom.us",
+    "zoom.com",
+    "zoomgov.com"
+  ],
+  "Slack": [
+    "slack.com",
+    "slack-edge.com",
+    "slack-imgs.com"
+  ],
+  "Discord": [
+    "discord.com",
+    "discordapp.com",
+    "discord.gg",
+    "discord.media"
+  ],
+  "Reddit": [
+    "reddit.com",
+    "redditmedia.com",
+    "redditstatic.com",
+    "redd.it"
+  ],
+  "TikTok": [
+    "tiktok.com",
+    "tiktokcdn.com",
+    "tiktokv.com",
+    "musical.ly"
+  ],
+  "Spotify": [
+    "spotify.com",
+    "spotifycdn.com",
+    "scdn.co"
+  ],
+  "Steam": [
+    "steampowered.com",
+    "steamcommunity.com",
+    "steamstatic.com",
+    "steamusercontent.com"
+  ],
+  "CloudFlare": [
+    "cloudflare.com",
+    "cloudflare-dns.com",
+    "cloudflareinsights.com"
+  ],
+  "Twitch": [
+    "twitch.tv",
+    "twitchcdn.net",
+    "jtvnw.net"
+  ],
+  "Adobe": [
+    "adobe.com",
+    "adobelogin.com",
+    "adobe.io"
+  ],
+  "PayPal": [
+    "paypal.com",
+    "paypalobjects.com"
+  ],
+  "eBay": [
+    "ebay.com",
+    "ebayimg.com",
+    "ebaystatic.com"
+  ],
+  "Dropbox": [
+    "dropbox.com",
+    "dropboxstatic.com",
+    "dropboxusercontent.com"
+  ],
+  "OneDrive": [
+    "onedrive.com",
+    "onedrive.live.com"
+  ],
+  "Wikipedia": [
+    "wikipedia.org",
+    "wikimedia.org",
+    "wikidata.org"
+  ],
+  "Banking": [
+    "chase.com",
+    "bankofamerica.com",
+    "wellsfargo.com",
+    "citi.com",
+    "usbank.com"
+  ],
+  "Cryptocurrency": [
+    "coinbase.com",
+    "binance.com",
+    "kraken.com",
+    "blockchain.com",
+    "crypto.com"
+  ],
+  "News": [
+    "cnn.com",
+    "bbc.com",
+    "nytimes.com",
+    "foxnews.com",
+    "reuters.com",
+    "apnews.com"
+  ],
+  "Shopping": [
+    "walmart.com",
+    "target.com",
+    "bestbuy.com",
+    "homedepot.com",
+    "costco.com"
+  ],
+  "Gaming": [
+    "epicgames.com",
+    "ea.com",
+    "ubisoft.com",
+    "blizzard.com",
+    "riotgames.com"
+  ]
+}
