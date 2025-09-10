@@ -34,3 +34,4 @@ build/
 dist/
 *.egg-info/
 
+\n# Binaries\n*.exe\n*.msi\n*.zip\n
