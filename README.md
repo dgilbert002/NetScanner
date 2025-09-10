@@ -6,12 +6,13 @@ A real-time network monitoring dashboard with live packet capture, device discov
 
 ### First Time Setup
 1. **Double-click `setup.bat`** - This will install everything you need
-2. **Double-click `start.bat`** - This launches the dashboard
-3. **Open http://127.0.0.1:5000** in your browser
-4. **Click "Start Real Monitoring"** to begin capturing live data
+2. **Double-click `start.bat`** - This launches the server AND opens your browser automatically!
 
 ### Daily Use
 Just **double-click `start.bat`** - it handles everything automatically!
+- Starts the server on port 5002
+- Opens your web browser to the dashboard
+- Press any key in the command window to stop the server
 
 ## 📁 Project Structure
 
@@ -79,7 +80,7 @@ network-monitor/
 ### App Won't Start
 - **Run `setup.bat`** first if you haven't already
 - **Check Python installation** - Need Python 3.8+
-- **Check port 5000** - Make sure it's not being used by another app
+- **Check port 5002** - Make sure it's not being used by another app
 
 ## 📊 Dashboard Features
 
@@ -106,7 +107,7 @@ If you encounter any issues:
 1. Check the troubleshooting section above
 2. Make sure you're running as Administrator
 3. Verify your network interface is detected correctly
-4. Check that port 5000 is available
+4. Check that port 5002 is available
 
 ---
 

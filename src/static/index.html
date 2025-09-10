@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Network Monitor Dashboard</title>
+    <title>NetScanner - Family Network Monitor</title>
     <style>
         * {
             margin: 0;
@@ -11,653 +11,2188 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5a67d8;
+            --secondary: #764ba2;
+            --success: #48bb78;
+            --warning: #f6ad55;
+            --danger: #fc8181;
+            --dark: #2d3748;
+            --gray: #718096;
+            --light: #f7fafc;
+            --border: #e2e8f0;
+            --white: #ffffff;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #333;
-            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--white);
+            color: var(--dark);
+            overflow-x: hidden;
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
+        /* Top Status Bar */
+        .status-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 44px;
+            background: var(--white);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 1001;
+            border-bottom: 1px solid var(--border);
         }
 
-        .header {
-            background: rgba(255, 255, 255, 0.95);
+        .app-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        /* Hamburger Menu */
+        .hamburger {
+            position: fixed;
+            top: 12px;
+            left: 20px;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            z-index: 1002;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+        }
+
+        .hamburger-line {
+            width: 100%;
+            height: 3px;
+            background: var(--dark);
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .hamburger.active .hamburger-line:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+
+        .hamburger.active .hamburger-line:nth-child(2) {
+            opacity: 0;
+        }
+
+        .hamburger.active .hamburger-line:nth-child(3) {
+            transform: rotate(-45deg) translate(7px, -6px);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            left: -70%;
+            top: 0;
+            width: 70%;
+            max-width: 300px;
+            height: 100vh;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 60px 20px 20px;
+            overflow-y: auto;
+            z-index: 1000;
+            transition: left 0.3s ease;
             backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         }
 
-        .header h1 {
-            color: #2c3e50;
-            font-size: 2.5rem;
-            margin-bottom: 10px;
+        .sidebar.active {
+            left: 0;
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin-bottom: 8px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            font-size: 16px;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .nav-link.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .badge {
+            margin-left: auto;
+            padding: 4px 8px;
+            background: var(--danger);
+            color: white;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            min-width: 20px;
             text-align: center;
         }
 
-        .status-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
+        /* Main Content */
+        .main-content {
+            padding-top: 44px;
+            min-height: 100vh;
+            transition: margin-left 0.3s ease;
         }
 
-        .status-item {
+        .main-content.sidebar-open {
+            margin-left: 0;
+        }
+
+        /* Overlay for mobile */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+        }
+
+        .overlay.active {
+            display: block;
+        }
+
+        /* Dashboard Content */
+        .dashboard-content {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Profile Cards Grid */
+        .profiles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .profile-card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 2px solid transparent;
+            position: relative;
+        }
+
+        .profile-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            border-color: var(--primary);
+        }
+
+        .profile-alert-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: var(--danger);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 12px;
+            min-width: 18px;
+            text-align: center;
+            display: none;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .profile-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+            background-size: cover;
+            background-position: center;
+        }
+
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .profile-info h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 4px;
+        }
+
+        .profile-info p {
+            font-size: 14px;
+            color: var(--gray);
+        }
+
+        .profile-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .stat-item {
+            text-align: left;
+            padding: 8px 0;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--gray);
+            text-transform: uppercase;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .profile-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 12px;
+        }
+
+        .status-online {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .status-offline {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .status-away {
+            background: #feebc8;
+            color: #7c2d12;
+        }
+
+        /* Add Profile Button - Single Circle */
+        .add-profile-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+        }
+
+        .add-profile-button {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            font-size: 32px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .add-profile-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+        }
+
+        /* Profile Detail Section */
+        .profile-detail {
+            display: none;
+            background: var(--white);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .profile-detail.active {
+            display: block;
+        }
+
+        .profile-detail-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .back-button {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--gray);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            background: var(--light);
+            color: var(--dark);
+        }
+
+        .profile-detail-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .profile-detail-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--primary);
+        }
+
+        .profile-detail-avatar-initials {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 600;
+            border: 2px solid var(--primary);
+        }
+
+        /* Collapsible Sections */
+        .collapsible-section {
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        .collapsible-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .collapsible-header:hover {
+            background: var(--light);
+        }
+
+        .collapsible-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--dark);
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 8px 15px;
-            background: #f8f9fa;
-            border-radius: 20px;
+        }
+
+        .collapsible-count {
+            font-size: 12px;
+            color: var(--gray);
             font-weight: 500;
+            margin-left: 8px;
         }
 
-        .status-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #28a745;
-            animation: pulse 2s infinite;
-        }
-
-        .status-indicator.inactive {
-            background: #dc3545;
-            animation: none;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-
-        .controls {
-            display: flex;
-            gap: 10px;
-        }
-
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
+        .collapsible-total {
+            font-size: 12px;
+            color: var(--gray);
             font-weight: 500;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
+            margin-left: 8px;
         }
 
-        .btn-primary {
-            background: #007bff;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #0056b3;
-            transform: translateY(-2px);
-        }
-
-        .btn-danger {
-            background: #dc3545;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #c82333;
-            transform: translateY(-2px);
-        }
-
-        .btn-success {
-            background: #28a745;
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #218838;
-            transform: translateY(-2px);
-        }
-
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        .collapsible-icon {
+            font-size: 18px;
             transition: transform 0.3s ease;
         }
 
-        .card:hover {
-            transform: translateY(-5px);
+        .collapsible-icon.expanded {
+            transform: rotate(180deg);
         }
 
-        .card h3 {
-            color: #2c3e50;
-            margin-bottom: 15px;
-            font-size: 1.3rem;
+        .collapsible-badge {
+            background: var(--danger);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 12px;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        .collapsible-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .collapsible-content.expanded {
+            max-height: 1000px;
+        }
+
+        .collapsible-body {
+            padding: 20px;
+        }
+
+        /* Device Grid */
+        .device-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .device-card {
+            background: var(--light);
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .device-card:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .device-card.active {
+            border-color: var(--success);
+            background: rgba(72, 187, 120, 0.05);
+        }
+
+        .device-name {
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 4px;
+        }
+
+        .device-info {
+            font-size: 12px;
+            color: var(--gray);
+            margin-bottom: 8px;
+        }
+
+        .device-status {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 6px;
+            font-size: 12px;
         }
 
-        .card-icon {
-            width: 24px;
-            height: 24px;
-            background: #007bff;
+        .device-last-seen {
+            font-size: 11px;
+            color: var(--gray);
+            margin-top: 4px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--gray);
+        }
+
+        .status-dot.online {
+            background: var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.active {
+            background: var(--primary);
+            animation: heartbeat 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        /* App Categories */
+        .app-category {
+            margin-bottom: 16px;
+        }
+
+        .category-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--light);
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .category-header:hover {
+            background: #e2e8f0;
+        }
+
+        .category-title {
+            font-weight: 600;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .category-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--gray);
+        }
+
+        .category-dot.active {
+            background: var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        .category-icon {
+            font-size: 14px;
+            transition: transform 0.3s ease;
+        }
+
+        .category-icon.expanded {
+            transform: rotate(180deg);
+        }
+
+        .category-apps {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .category-apps.expanded {
+            max-height: 500px;
+        }
+
+        .app-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
             border-radius: 6px;
+            margin-bottom: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .app-item:hover {
+            background: var(--light);
+        }
+
+        .app-item.active {
+            background: rgba(72, 187, 120, 0.1);
+            border-left: 3px solid var(--success);
+        }
+
+        .app-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .app-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            background: var(--primary);
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             font-size: 14px;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #007bff;
-            margin-bottom: 5px;
-        }
-
-        .stat-label {
-            color: #6c757d;
-            font-size: 0.9rem;
-        }
-
-        .device-list {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .device-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            border-bottom: 1px solid #e9ecef;
-            transition: background 0.3s ease;
-        }
-
-        .device-item:hover {
-            background: #f8f9fa;
-        }
-
-        .device-info {
-            flex: 1;
-        }
-
-        .device-name {
-            font-weight: 500;
-            color: #2c3e50;
-        }
-
-        .device-details {
-            font-size: 0.8rem;
-            color: #6c757d;
-        }
-
-        .device-status {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #28a745;
-        }
-
-        .activity-log {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        }
-
-        .log-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-        }
-
-        .log-table th,
-        .log-table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #e9ecef;
-        }
-
-        .log-table th {
-            background: #f8f9fa;
             font-weight: 600;
-            color: #2c3e50;
         }
 
-        .log-table tr:hover {
-            background: #f8f9fa;
+        .app-name {
+            font-weight: 500;
+            color: var(--dark);
         }
 
-        .domain-link {
-            color: #007bff;
-            text-decoration: none;
+        .app-time {
+            font-size: 12px;
+            color: var(--gray);
         }
 
-        .domain-link:hover {
-            text-decoration: underline;
+        .app-device {
+            font-size: 10px;
+            color: var(--gray);
+            margin-top: 2px;
         }
 
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #6c757d;
+        .app-last-accessed {
+            font-size: 10px;
+            color: var(--gray);
+            margin-top: 2px;
         }
 
-        .error {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 10px;
+        .category-total {
+            font-size: 12px;
+            color: var(--gray);
+            font-weight: 500;
+        }
+
+        .app-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--gray);
+        }
+
+        .app-dot.active {
+            background: var(--success);
+            animation: heartbeat 1s infinite;
+        }
+
+        /* Alerts */
+        .alert-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
             border-radius: 8px;
-            margin: 10px 0;
+            margin-bottom: 8px;
+            border-left: 4px solid var(--danger);
+            background: rgba(252, 129, 129, 0.05);
+            cursor: pointer;
+            transition: all 0.3s ease;
         }
 
-        .success {
-            background: #d4edda;
-            color: #155724;
-            padding: 10px;
-            border-radius: 8px;
-            margin: 10px 0;
+        .alert-item:hover {
+            background: rgba(252, 129, 129, 0.1);
+            transform: translateX(2px);
         }
 
-        .chart-container {
-            height: 200px;
+        .alert-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--danger);
+            color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #f8f9fa;
-            border-radius: 8px;
-            margin-top: 10px;
+            font-size: 14px;
         }
 
+        .alert-content {
+            flex: 1;
+        }
+
+        .alert-title {
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 2px;
+        }
+
+        .alert-description {
+            font-size: 12px;
+            color: var(--gray);
+        }
+
+        .alert-time {
+            font-size: 11px;
+            color: var(--gray);
+        }
+
+        .alert-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 12px;
+        }
+
+        .alert-action-btn {
+            background: var(--light);
+            border: 1px solid var(--border);
+            color: var(--gray);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .alert-action-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .alert-item.seen {
+            opacity: 0.6;
+            background: rgba(252, 129, 129, 0.02);
+        }
+
+        .alert-item.seen .alert-title {
+            text-decoration: line-through;
+        }
+
+        /* App Timeline */
+        .app-timeline {
+            display: none;
+            margin-top: 8px;
+            margin-left: 20px;
+            padding: 0;
+        }
+
+        .app-timeline.expanded {
+            display: block;
+        }
+
+        .timeline-sessions {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .timeline-session {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 2px 0;
+            font-size: 12px;
+            color: var(--gray);
+        }
+
+        .timeline-dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--gray);
+            flex-shrink: 0;
+        }
+
+        .timeline-times {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .timeline-duration {
+            font-weight: 500;
+            color: var(--dark);
+        }
+
+        /* Bottom Action Button */
+        .bottom-action {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .bottom-action:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+        }
+
+        /* Mobile Responsive */
         @media (max-width: 768px) {
-            .container {
-                padding: 10px;
-            }
-
-            .header h1 {
-                font-size: 2rem;
-            }
-
-            .status-bar {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .controls {
-                justify-content: center;
-            }
-
-            .dashboard-grid {
+            .profiles-grid {
                 grid-template-columns: 1fr;
             }
+            
+            .sidebar {
+            width: 100%;
+                left: -100%;
+            }
+            
+            .main-content.sidebar-open {
+                margin-left: 0;
+            }
+            
+            .bottom-action {
+                bottom: 20px;
+                right: 20px;
+            }
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            border: 3px solid var(--border);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            max-width: 400px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            padding: 24px 24px 0;
+            text-align: center;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--gray);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .modal-close:hover {
+            background: var(--light);
+            color: var(--dark);
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+
+        .modal-subtitle {
+            font-size: 14px;
+            color: var(--gray);
+            margin-bottom: 24px;
+        }
+
+        .modal-body {
+            padding: 0 24px 24px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-upload-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-upload-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .file-upload-label:hover {
+            border-color: var(--primary);
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .file-upload-label.has-image {
+            border: 2px solid var(--primary);
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .file-upload-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+            font-size: 24px;
+            color: var(--gray);
+        }
+
+        .file-upload-text {
+            font-size: 14px;
+            color: var(--gray);
+        }
+
+        .preview-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin: 0 auto 8px;
+            display: block;
+        }
+
+        .change-image-text {
+            font-size: 12px;
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .modal-footer {
+            padding: 0 24px 24px;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary {
+            background: var(--gray);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6c7d;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        /* Hidden sections */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🌐 Network Monitor Dashboard</h1>
+    <!-- Status Bar -->
             <div class="status-bar">
-                <div class="status-item">
-                    <div class="status-indicator" id="statusIndicator"></div>
-                    <span id="statusText">Monitoring Status</span>
+        <div class="app-title">NetScanner</div>
                 </div>
-                <div class="status-item">
-                    <span>📊 <span id="packetsCount">0</span> packets captured</span>
+
+    <!-- Hamburger Menu -->
+    <div class="hamburger" id="hamburger" onclick="toggleSidebar()">
+        <div class="hamburger-line"></div>
+        <div class="hamburger-line"></div>
+        <div class="hamburger-line"></div>
                 </div>
-                <div class="status-item">
-                    <span>📱 <span id="devicesCount">0</span> devices active</span>
+
+    <!-- Overlay for mobile -->
+    <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <nav>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="#home" class="nav-link active" onclick="showSection('home')">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+                        </svg>
+                        <span>Home</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#live" class="nav-link" onclick="showSection('live')">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M11 17c0 .55.45 1 1 1s1-.45 1-1-.45-1-1-1-1 .45-1 1zm0-14v4h2V5.08c3.39.49 6 3.39 6 6.92 0 3.87-3.13 7-7 7s-7-3.13-7-7c0-1.68.59-3.22 1.58-4.42L12 13l1.41-1.41-6.8-6.8v.02C4.42 6.45 3 9.05 3 12c0 4.97 4.02 9 9 9 4.97 0 9-4.03 9-9s-4.03-9-9-9h-1zm7 9c0-.55-.45-1-1-1s-1 .45-1 1 .45 1 1 1 1-.45 1-1zM6 12c0 .55.45 1 1 1s1-.45 1-1-.45-1-1-1-1 .45-1 1z"/>
+                        </svg>
+                        <span>Live</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#profiles" class="nav-link" onclick="showSection('profiles')">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                        </svg>
+                        <span>Profiles</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#devices" class="nav-link" onclick="showSection('devices')">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/>
+                        </svg>
+                        <span>Devices</span>
+                        <span class="badge" id="devices-badge" style="display:none;">0</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#hostnames" class="nav-link" onclick="showSection('hostnames')">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L2 7v10l10 5 10-5V7l-10-5zm0 3.09L18.26 7 12 10.91 5.74 7 12 5.09zM4 8.82l7 3.89v6.97L4 15.78V8.82zm16 6.96l-7 3.9v-6.97l7-3.89v6.96z"/>
+                        </svg>
+                        <span>Hostnames</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content" id="main-content">
+        <div class="dashboard-content">
+            <!-- Home Section -->
+            <div id="home-section" class="tab-content active">
+                <!-- Profile Cards -->
+                <div class="profiles-grid" id="profiles-grid">
+                    <!-- Profile cards will be inserted here -->
                 </div>
-        <div class="controls">
-            <button class="btn btn-success" onclick="startMonitoring()">Start Real Monitoring</button>
-            <button class="btn btn-danger" onclick="stopMonitoring()">Stop Monitoring</button>
-            <a href="/groups" class="btn" style="background: #667eea; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; display: inline-block;">📊 Manage Groups</a>
+
+                <!-- Add Profile Button - Only show when no profiles -->
+                <div class="add-profile-container" id="add-profile-container">
+                    <button class="add-profile-button" onclick="showAddProfileModal()">+</button>
+            </div>
+        </div>
+
+            <!-- Profile Detail Section -->
+            <div id="profile-detail-section" class="profile-detail">
+                <div class="profile-detail-header">
+                    <button class="back-button" onclick="showDashboard()">←</button>
+                    <div class="profile-detail-title">
+                        <div id="profile-detail-avatar"></div>
+                        <span id="profile-detail-name">Profile Name</span>
+                    </div>
+                </div>
+                <div class="profile-detail-content">
+                    <!-- Connected Devices Section -->
+                    <div class="collapsible-section">
+                        <div class="collapsible-header" onclick="toggleCollapsible('devices')">
+                            <div class="collapsible-title">
+                                <span>📱</span>
+                                <span>Connected Devices</span>
+                                <div class="collapsible-count" id="devices-count">0</div>
+                            </div>
+                            <div class="collapsible-icon" id="devices-icon">▼</div>
+                        </div>
+                        <div class="collapsible-content" id="devices-content">
+                            <div class="collapsible-body">
+                                <div class="device-grid" id="devices-grid">
+                                    <!-- Device cards will be inserted here -->
+                                </div>
         </div>
             </div>
         </div>
 
-        <div class="dashboard-grid">
-            <div class="card">
-                <h3>
-                    <div class="card-icon">📊</div>
-                    Traffic Statistics
-                </h3>
-                <div class="stat-value" id="totalBytes">0 B</div>
-                <div class="stat-label">Total bytes transferred</div>
-                <div class="chart-container">
-                    <div class="loading">Traffic chart will appear here</div>
+                    <!-- Active Today Section -->
+                    <div class="collapsible-section">
+                        <div class="collapsible-header" onclick="toggleCollapsible('active')">
+                            <div class="collapsible-title">
+                                <span>⏱️</span>
+                                <span>Active Today</span>
+                                <div class="collapsible-total" id="active-total">0h 0m</div>
+                            </div>
+                            <div class="collapsible-icon" id="active-icon">▼</div>
+                        </div>
+                        <div class="collapsible-content" id="active-content">
+                            <div class="collapsible-body">
+                                <div id="app-categories">
+                                    <!-- App categories will be inserted here -->
+                                </div>
+                            </div>
                 </div>
             </div>
 
-            <div class="card">
-                <h3>
-                    <div class="card-icon">🌍</div>
-                    Top Protocols
-                </h3>
-                <div id="protocolsList">
-                    <div class="loading">Loading protocols...</div>
+                    <!-- Alerts Section -->
+                    <div class="collapsible-section">
+                        <div class="collapsible-header" onclick="toggleCollapsible('alerts')">
+                            <div class="collapsible-title">
+                                <span>🚨</span>
+                                <span>Alerts</span>
+                                <div class="collapsible-badge" id="alerts-badge" style="display: none;">0</div>
+                            </div>
+                            <div class="collapsible-icon" id="alerts-icon">▼</div>
+                        </div>
+                        <div class="collapsible-content" id="alerts-content">
+                            <div class="collapsible-body">
+                                <div class="alert-actions">
+                                    <button class="alert-action-btn" onclick="clearAllAlerts()" title="Clear All Alerts">🗑️</button>
+                                </div>
+                                <div id="alerts-list">
+                                    <!-- Alert items will be inserted here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="card">
-                <h3>
-                    <div class="card-icon">🔗</div>
-                    Top Domains
-                </h3>
-                <div id="domainsList">
-                    <div class="loading">Loading domains...</div>
+            <!-- Other sections (Live, Profiles, Devices, Hostnames) -->
+            <div id="live-section" class="tab-content">
+                <div style="text-align: center; padding: 40px; color: var(--gray);">
+                    <h2>Live Traffic Monitoring</h2>
+                    <p>Real-time network traffic will be displayed here</p>
                 </div>
             </div>
 
-            <div class="card">
-                <h3>
-                    <div class="card-icon">📱</div>
-                    Connected Devices
-                </h3>
-                <div class="device-list" id="devicesList">
-                    <div class="loading">Loading devices...</div>
+            <div id="profiles-section" class="tab-content">
+                <div style="text-align: center; padding: 40px; color: var(--gray);">
+                    <h2>Profile Management</h2>
+                    <p>Manage family member profiles here</p>
                 </div>
+            </div>
+
+            <div id="devices-section" class="tab-content">
+                <div style="text-align: center; padding: 40px; color: var(--gray);">
+                    <h2>Device Management</h2>
+                    <p>View and manage network devices here</p>
             </div>
         </div>
 
-        <div class="activity-log">
-            <h3>
-                <div class="card-icon">📋</div>
-                Recent Website Activity
-            </h3>
-            <div id="activityLog">
-                <div class="loading">Loading activity...</div>
+            <div id="hostnames-section" class="tab-content">
+                <div style="text-align: center; padding: 40px; color: var(--gray);">
+                    <h2>Hostname Management</h2>
+                    <p>Manage hostnames and applications here</p>
+            </div>
+        </div>
+    </div>
+    </main>
+
+    <!-- Add Profile Modal -->
+    <div class="modal" id="add-profile-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button class="modal-close" onclick="closeAddProfileModal()">×</button>
+                <h3 class="modal-title">Add Family Member</h3>
+                <p class="modal-subtitle">Create a profile for a family member</p>
+            </div>
+            <div class="modal-body">
+                <form id="add-profile-form">
+                    <div class="form-group">
+                        <label class="form-label" for="profile-name">Name</label>
+                        <input type="text" class="form-control" id="profile-name" placeholder="Enter family member's name" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Profile Picture</label>
+                        <div class="file-upload">
+                            <input type="file" class="file-upload-input" id="profile-picture" accept="image/*" onchange="previewImage(this)">
+                            <label for="profile-picture" class="file-upload-label">
+                                <div class="file-upload-icon">📷</div>
+                                <div class="file-upload-text">Click to upload a photo</div>
+                            </label>
+                            <img id="image-preview" class="preview-image" style="display: none;">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeAddProfileModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveProfile()">Add Member</button>
             </div>
         </div>
     </div>
 
-    <script>
-        // Global state
-        let monitoringActive = false;
-        let refreshInterval;
+    <!-- Bottom Action Button -->
+    <button class="bottom-action" onclick="showAddProfileModal()" title="Add Family Member" id="bottom-add-button" style="display: none;">
+        +
+    </button>
 
-        // Initialize dashboard
+    <script>
+        // Global variables
+        let currentSection = 'home';
+        let sidebarOpen = false;
+        let refreshInterval = null;
+
+        // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
-            loadDashboardData();
+            loadProfiles();
             startAutoRefresh();
-            // Auto-start monitoring
-            checkAndStartMonitoring();
         });
 
-        // Auto-refresh data every 2 seconds for real-time updates
-        function startAutoRefresh() {
-            refreshInterval = setInterval(loadDashboardData, 2000);
+        // Update time every minute
+
+        // Sidebar functions
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            const hamburger = document.getElementById('hamburger');
+            const mainContent = document.getElementById('main-content');
+
+            sidebarOpen = !sidebarOpen;
+            
+            if (sidebarOpen) {
+                sidebar.classList.add('active');
+                overlay.classList.add('active');
+                hamburger.classList.add('active');
+                mainContent.classList.add('sidebar-open');
+                } else {
+                closeSidebar();
+            }
         }
-        
-        // Check if monitoring is running and start if not
-        async function checkAndStartMonitoring() {
+
+        function closeSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            const hamburger = document.getElementById('hamburger');
+            const mainContent = document.getElementById('main-content');
+
+            sidebarOpen = false;
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+            hamburger.classList.remove('active');
+            mainContent.classList.remove('sidebar-open');
+        }
+
+        // Navigation functions
+        function showSection(section) {
+            // Hide all sections
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Remove active class from all nav links
+            document.querySelectorAll('.nav-link').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Show selected section
+            document.getElementById(section + '-section').classList.add('active');
+            
+            // Add active class to selected nav link
+            event.target.closest('.nav-link').classList.add('active');
+            
+            currentSection = section;
+            
+            // Close sidebar on mobile after selection
+            if (window.innerWidth <= 768) {
+                closeSidebar();
+            }
+            
+            // Load section-specific data
+            switch(section) {
+                case 'home':
+                    loadProfiles();
+                    break;
+                case 'live':
+                    loadLiveData();
+                    break;
+                case 'profiles':
+                    loadProfilesData();
+                    break;
+                case 'devices':
+                    loadDevicesData();
+                    break;
+                case 'hostnames':
+                    loadHostnamesData();
+                    break;
+            }
+        }
+
+        function showDashboard() {
+            document.getElementById('profile-detail-section').classList.remove('active');
+            document.getElementById('home-section').classList.add('active');
+            // Update button visibility
+            updateAddButtonVisibility();
+        }
+
+        // Profile functions
+        async function loadProfiles() {
             try {
-                const response = await fetch('/api/monitoring/status');
+                const response = await fetch('/api/v2/profiles/list');
                 const data = await response.json();
                 
-                if (!data.running) {
-                    console.log('Starting monitoring automatically...');
-                    await startMonitoring();
-                } else {
-                    console.log('Monitoring already running');
+                const profilesGrid = document.getElementById('profiles-grid');
+                const addContainer = document.getElementById('add-profile-container');
+                const bottomButton = document.getElementById('bottom-add-button');
+                
+                profilesGrid.innerHTML = '';
+                
+                if (data.profiles && data.profiles.length > 0) {
+                    data.profiles.forEach(profile => {
+                        const profileCard = createProfileCard(profile);
+                        profilesGrid.appendChild(profileCard);
+                    });
                 }
+                
+                // Update button visibility
+                updateAddButtonVisibility();
+                
             } catch (error) {
-                console.error('Error checking monitoring status:', error);
+                console.error('Error loading profiles:', error);
+                // Update button visibility on error
+                updateAddButtonVisibility();
             }
         }
 
-        function stopAutoRefresh() {
-            if (refreshInterval) {
-                clearInterval(refreshInterval);
+        function createProfileCard(profile) {
+            const card = document.createElement('div');
+            card.className = 'profile-card';
+            card.onclick = () => showProfileDetail(profile);
+            
+            const status = getRandomStatus();
+            const lastSeen = getRandomLastSeen();
+            const lastDevice = getRandomDevice();
+            const lastAccessed = getRandomLastAccessed();
+            const timeOnline = getRandomTimeOnline();
+            const alertCount = Math.floor(Math.random() * 5); // Mock alert count
+            
+            // Calculate total time from categories (mock data)
+            const totalTime = '20h 5m'; // This would be calculated from actual category data
+            
+            // Create avatar with image or initials
+            let avatarContent = '';
+            if (profile.picture) {
+                avatarContent = `<img src="${profile.picture}" alt="${profile.name}">`;
+            } else {
+                avatarContent = profile.name.charAt(0).toUpperCase();
             }
-        }
-
-        // Load all dashboard data
-        async function loadDashboardData() {
-            try {
-                await Promise.all([
-                    loadMonitoringStatus(),
-                    loadDevices(),
-                    loadTrafficSummary(),
-                    loadTopDomains(),
-                    loadWebsiteActivity()
-                ]);
-            } catch (error) {
-                console.error('Error loading dashboard data:', error);
-            }
-        }
-
-        // Load monitoring status
-        async function loadMonitoringStatus() {
-            try {
-                const response = await fetch('/api/monitoring/status');
-                const data = await response.json();
-                
-                const statusIndicator = document.getElementById('statusIndicator');
-                const statusText = document.getElementById('statusText');
-                const packetsCount = document.getElementById('packetsCount');
-                
-                if (data.running) {
-                    statusIndicator.classList.remove('inactive');
-                    statusText.textContent = 'Monitoring Active';
-                    monitoringActive = true;
-                } else {
-                    statusIndicator.classList.add('inactive');
-                    statusText.textContent = 'Monitoring Inactive';
-                    monitoringActive = false;
-                }
-                
-                if (data.stats) {
-                    packetsCount.textContent = data.stats.packets_captured || 0;
-                }
-            } catch (error) {
-                console.error('Error loading monitoring status:', error);
-            }
-        }
-
-        // Load devices
-        async function loadDevices() {
-            try {
-                const response = await fetch('/api/devices');
-                const devices = await response.json();
-                
-                const devicesList = document.getElementById('devicesList');
-                const devicesCount = document.getElementById('devicesCount');
-                
-                devicesCount.textContent = devices.length;
-                
-                if (devices.length === 0) {
-                    devicesList.innerHTML = '<div class="loading">No devices found</div>';
-                    return;
-                }
-                
-                devicesList.innerHTML = devices.map(device => `
-                    <div class="device-item">
-                        <div class="device-info">
-                            <div class="device-name">${device.hostname || 'Unknown Device'}</div>
-                            <div class="device-details">
-                                ${device.ip_address || 'No IP'} • ${device.vendor || 'Unknown Vendor'}
+            
+            card.innerHTML = `
+                <div class="profile-alert-badge" ${alertCount > 0 ? 'style="display: block;"' : ''}>${alertCount}</div>
+                <div class="profile-header">
+                    <div class="profile-avatar">${avatarContent}</div>
+                    <div class="profile-info">
+                        <h3>${profile.name}</h3>
+                        <p>${profile.description || 'Family Member'}</p>
                             </div>
                         </div>
-                        <div class="device-status"></div>
+                <div class="profile-stats">
+                    <div class="stat-item">
+                        <div class="stat-label">Last seen:</div>
+                        <div class="stat-value">${lastSeen}</div>
                     </div>
-                `).join('');
-            } catch (error) {
-                console.error('Error loading devices:', error);
-                document.getElementById('devicesList').innerHTML = '<div class="error">Error loading devices</div>';
-            }
+                    <div class="stat-item">
+                        <div class="stat-label">Last device:</div>
+                        <div class="stat-value" style="display: flex; align-items: center; gap: 6px;">
+                            <div class="status-dot online" style="width: 6px; height: 6px;"></div>
+                            ${lastDevice}
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Last accessed:</div>
+                        <div class="stat-value">${lastAccessed}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Time online:</div>
+                        <div class="stat-value">${totalTime}</div>
+                    </div>
+                </div>
+                <div class="profile-status ${status.class}">${status.text}</div>
+            `;
+            
+            return card;
         }
 
-        // Load traffic summary
-        async function loadTrafficSummary() {
-            try {
-                const response = await fetch('/api/traffic/summary');
-                const data = await response.json();
-                
-                const totalBytes = document.getElementById('totalBytes');
-                const protocolsList = document.getElementById('protocolsList');
-                
-                totalBytes.textContent = formatBytes(data.total_bytes || 0);
-                
-                if (data.protocols && Object.keys(data.protocols).length > 0) {
-                    protocolsList.innerHTML = Object.entries(data.protocols)
-                        .sort((a, b) => b[1] - a[1])
-                        .slice(0, 5)
-                        .map(([protocol, count]) => `
-                            <div style="display: flex; justify-content: space-between; padding: 5px 0;">
-                                <span>${protocol}</span>
-                                <span style="font-weight: bold;">${count}</span>
-                            </div>
-                        `).join('');
+        function getRandomStatus() {
+            const statuses = [
+                { class: 'status-online', text: 'Online' },
+                { class: 'status-away', text: 'Away' },
+                { class: 'status-offline', text: 'Offline' }
+            ];
+            return statuses[Math.floor(Math.random() * statuses.length)];
+        }
+
+        function getRandomLastSeen() {
+            const times = ['2 minutes ago', '15 minutes ago', '1 hour ago', '3 hours ago', 'Yesterday', '2 days ago'];
+            return times[Math.floor(Math.random() * times.length)];
+        }
+
+        function getRandomDevice() {
+            const devices = ['iPhone 14', 'MacBook Pro', 'iPad Air', 'Samsung Galaxy', 'Windows PC', 'Android Tablet'];
+            return devices[Math.floor(Math.random() * devices.length)];
+        }
+
+        function getRandomLastAccessed() {
+            const sites = ['YouTube', 'Instagram', 'TikTok', 'Netflix', 'Spotify', 'Gmail', 'Facebook'];
+            return sites[Math.floor(Math.random() * sites.length)];
+        }
+
+        function getRandomTimeOnline() {
+            const times = ['2h 15m', '45m', '6h 30m', '1h 20m', '4h 5m', '30m'];
+            return times[Math.floor(Math.random() * times.length)];
+        }
+
+        function showProfileDetail(profile) {
+            document.getElementById('home-section').classList.remove('active');
+            document.getElementById('profile-detail-section').classList.add('active');
+            
+            // Update profile header with avatar and name
+            const avatarDiv = document.getElementById('profile-detail-avatar');
+            const nameSpan = document.getElementById('profile-detail-name');
+            
+            if (profile.picture) {
+                avatarDiv.innerHTML = `<img src="${profile.picture}" alt="${profile.name}" class="profile-detail-avatar">`;
                 } else {
-                    protocolsList.innerHTML = '<div class="loading">No protocol data</div>';
-                }
-            } catch (error) {
-                console.error('Error loading traffic summary:', error);
-                document.getElementById('protocolsList').innerHTML = '<div class="error">Error loading protocols</div>';
+                avatarDiv.innerHTML = `<div class="profile-detail-avatar-initials">${profile.name.charAt(0).toUpperCase()}</div>`;
+            }
+            
+            nameSpan.textContent = profile.name;
+            
+            // Update button visibility
+            updateAddButtonVisibility();
+            
+            // Load profile data
+            loadProfileDevices(profile);
+            loadProfileActivity(profile);
+            loadProfileAlerts(profile);
+        }
+
+        // Modal functions
+        function showAddProfileModal() {
+            document.getElementById('add-profile-modal').classList.add('active');
+            // Reset form
+            document.getElementById('profile-name').value = '';
+            document.getElementById('profile-picture').value = '';
+            document.getElementById('image-preview').style.display = 'none';
+            
+            // Reset file upload UI
+            const label = document.querySelector('.file-upload-label');
+            const icon = label.querySelector('.file-upload-icon');
+            const text = label.querySelector('.file-upload-text');
+            icon.style.display = 'flex';
+            text.textContent = 'Click to upload a photo';
+            text.className = 'file-upload-text';
+            label.classList.remove('has-image');
+            
+            // Update button visibility
+            updateAddButtonVisibility();
+        }
+
+        function closeAddProfileModal() {
+            document.getElementById('add-profile-modal').classList.remove('active');
+            // Update button visibility
+            updateAddButtonVisibility();
+        }
+
+        function previewImage(input) {
+            const preview = document.getElementById('image-preview');
+            const file = input.files[0];
+            const label = input.closest('.file-upload').querySelector('.file-upload-label');
+            const icon = label.querySelector('.file-upload-icon');
+            const text = label.querySelector('.file-upload-text');
+            
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    
+                    // Hide icon and text, show image
+                    icon.style.display = 'none';
+                    text.textContent = 'Click to change';
+                    text.className = 'change-image-text';
+                    label.classList.add('has-image');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.style.display = 'none';
+                icon.style.display = 'flex';
+                text.textContent = 'Click to upload a photo';
+                text.className = 'file-upload-text';
+                label.classList.remove('has-image');
             }
         }
 
-        // Load top domains
-        async function loadTopDomains() {
-            try {
-                const response = await fetch('/api/websites/top-domains');
-                const domains = await response.json();
-                
-                const domainsList = document.getElementById('domainsList');
-                
-                if (domains.length === 0) {
-                    domainsList.innerHTML = '<div class="loading">No domain data</div>';
+        async function saveProfile() {
+            const name = document.getElementById('profile-name').value.trim();
+            const pictureFile = document.getElementById('profile-picture').files[0];
+            
+            if (!name) {
+                alert('Please enter a name for the family member');
                     return;
                 }
                 
-                domainsList.innerHTML = domains.slice(0, 5).map(domain => `
-                    <div style="display: flex; justify-content: space-between; padding: 5px 0;">
-                        <span>${domain.domain}</span>
-                        <span style="font-weight: bold;">${domain.visit_count}</span>
+            try {
+                // Create profile data
+                const profileData = {
+                    name: name,
+                    description: 'Family Member',
+                    color: '#3498db',
+                    icon: 'user',
+                    is_active: true,
+                    metadata: {}
+                };
+                
+                // If there's a picture, convert to base64
+                if (pictureFile) {
+                    const base64 = await fileToBase64(pictureFile);
+                    profileData.picture = base64;
+                }
+                
+                // Send to server
+                const response = await fetch('/api/v2/profiles/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(profileData)
+                });
+                
+                if (response.ok) {
+                    closeAddProfileModal();
+                    loadProfiles(); // Refresh the profiles list
+                } else {
+                    const error = await response.json();
+                    alert('Error creating profile: ' + (error.error || 'Unknown error'));
+                }
+                
+            } catch (error) {
+                console.error('Error saving profile:', error);
+                alert('Error creating profile. Please try again.');
+            }
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        function addProfile() {
+            showAddProfileModal();
+        }
+
+        // Collapsible section functions
+        function toggleCollapsible(section) {
+            const content = document.getElementById(section + '-content');
+            const icon = document.getElementById(section + '-icon');
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                icon.classList.remove('expanded');
+            } else {
+                content.classList.add('expanded');
+                icon.classList.add('expanded');
+            }
+        }
+
+        // Profile data loading functions
+        function loadProfileDevices(profile) {
+            const devicesGrid = document.getElementById('devices-grid');
+            const devicesCount = document.getElementById('devices-count');
+            
+            // Mock device data - in real implementation, this would come from API
+            const devices = [
+                { name: 'iPhone 13', ip: '192.168.1.100', mac: '00:1B:44:11:3A:B7', status: 'online', active: true, lastSeen: null },
+                { name: 'MacBook Pro', ip: '192.168.1.101', mac: '00:1B:44:11:3A:B8', status: 'online', active: false, lastSeen: null },
+                { name: 'Samsung Galaxy', ip: '192.168.1.103', mac: '00:1B:44:11:3A:BA', status: 'online', active: true, lastSeen: null },
+                { name: 'iPad Air', ip: '192.168.1.102', mac: '00:1B:44:11:3A:B9', status: 'offline', active: false, lastSeen: '2 hours ago' },
+                { name: 'Windows PC', ip: '192.168.1.104', mac: '00:1B:44:11:3A:BB', status: 'offline', active: false, lastSeen: '1 day ago' }
+            ];
+            
+            // Sort devices: online first, then offline
+            const sortedDevices = devices.sort((a, b) => {
+                if (a.status === 'online' && b.status === 'offline') return -1;
+                if (a.status === 'offline' && b.status === 'online') return 1;
+                return 0;
+            });
+            
+            const onlineCount = devices.filter(d => d.status === 'online').length;
+            const offlineCount = devices.filter(d => d.status === 'offline').length;
+            
+            // Update count display
+            if (onlineCount > 0) {
+                devicesCount.textContent = `${onlineCount} online`;
+            } else if (offlineCount > 0) {
+                const lastOfflineDevice = devices.filter(d => d.status === 'offline').sort((a, b) => {
+                    // Sort by lastSeen time (mock sorting)
+                    return a.lastSeen === '1 day ago' ? 1 : -1;
+                })[0];
+                devicesCount.textContent = `Last seen: ${lastOfflineDevice.lastSeen}`;
+            } else {
+                devicesCount.textContent = 'No devices';
+            }
+            
+            devicesGrid.innerHTML = '';
+            sortedDevices.forEach(device => {
+                const deviceCard = document.createElement('div');
+                deviceCard.className = `device-card ${device.active ? 'active' : ''}`;
+                
+                const lastSeenHtml = device.status === 'offline' && device.lastSeen ? 
+                    `<div class="device-last-seen">Last seen: ${device.lastSeen}</div>` : '';
+                
+                deviceCard.innerHTML = `
+                    <div class="device-name">${device.name}</div>
+                    <div class="device-info">${device.ip} • ${device.mac}</div>
+                    <div class="device-status">
+                        <div class="status-dot ${device.status === 'online' ? 'online' : ''} ${device.active ? 'active' : ''}"></div>
+                        <span>${device.status === 'online' ? (device.active ? 'Active Now' : 'Online') : 'Offline'}</span>
                     </div>
-                `).join('');
-            } catch (error) {
-                console.error('Error loading top domains:', error);
-                document.getElementById('domainsList').innerHTML = '<div class="error">Error loading domains</div>';
-            }
-        }
-
-        // Load website activity
-        async function loadWebsiteActivity() {
-            try {
-                const response = await fetch('/api/websites?hours=1');
-                const visits = await response.json();
-                
-                const activityLog = document.getElementById('activityLog');
-                
-                if (visits.length === 0) {
-                    activityLog.innerHTML = '<div class="loading">No recent activity</div>';
-                    return;
-                }
-                
-                activityLog.innerHTML = `
-                    <table class="log-table">
-                        <thead>
-                            <tr>
-                                <th>Time</th>
-                                <th>Device</th>
-                                <th>Domain</th>
-                                <th>Size</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${visits.slice(0, 20).map(visit => `
-                                <tr>
-                                    <td>${new Date(visit.timestamp).toLocaleTimeString()}</td>
-                                    <td>${visit.device_mac}</td>
-                                    <td><a href="#" class="domain-link">${visit.domain}</a></td>
-                                    <td>${formatBytes(visit.bytes_transferred || 0)}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
+                    ${lastSeenHtml}
                 `;
-            } catch (error) {
-                console.error('Error loading website activity:', error);
-                document.getElementById('activityLog').innerHTML = '<div class="error">Error loading activity</div>';
-            }
-        }
-
-        // Control functions
-        async function startMonitoring() {
-            try {
-                const response = await fetch('/api/monitoring/start', { method: 'POST' });
-                const data = await response.json();
                 
-                if (response.ok) {
-                    showMessage(data.message, 'success');
-                    loadMonitoringStatus();
-                } else {
-                    showMessage(data.error || 'Failed to start monitoring', 'error');
-                }
-            } catch (error) {
-                showMessage('Error starting monitoring: ' + error.message, 'error');
-            }
+                devicesGrid.appendChild(deviceCard);
+            });
         }
 
-        async function stopMonitoring() {
-            try {
-                const response = await fetch('/api/monitoring/stop', { method: 'POST' });
-                const data = await response.json();
+        function loadProfileActivity(profile) {
+            const categoriesContainer = document.getElementById('app-categories');
+            const activeTotal = document.getElementById('active-total');
+            
+            // Mock app category data with timeline sessions
+            const categories = [
+                {
+                    name: 'Social Media',
+                    active: true,
+                    apps: [
+                        { 
+                            name: 'Instagram', 
+                            time: '2h 15m', 
+                            active: true, 
+                            icon: 'IG', 
+                            device: 'iPhone 13', 
+                            lastAccessed: null,
+                            sessions: [
+                                { start: '09:15', end: '10:30', duration: '1h 15m' },
+                                { start: '14:20', end: '15:20', duration: '1h 0m' }
+                            ]
+                        },
+                        { 
+                            name: 'TikTok', 
+                            time: '1h 30m', 
+                            active: false, 
+                            icon: 'TT', 
+                            device: null, 
+                            lastAccessed: '30 min ago',
+                            sessions: [
+                                { start: '11:00', end: '12:30', duration: '1h 30m' }
+                            ]
+                        },
+                        { 
+                            name: 'Facebook', 
+                            time: '45m', 
+                            active: false, 
+                            icon: 'FB', 
+                            device: null, 
+                            lastAccessed: '1 hour ago',
+                            sessions: [
+                                { start: '08:00', end: '08:45', duration: '45m' }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    name: 'Entertainment',
+                    active: false,
+                    apps: [
+                        { 
+                            name: 'YouTube', 
+                            time: '3h 20m', 
+                            active: false, 
+                            icon: 'YT', 
+                            device: null, 
+                            lastAccessed: '2 hours ago',
+                            sessions: [
+                                { start: '13:00', end: '15:20', duration: '2h 20m' },
+                                { start: '19:00', end: '20:00', duration: '1h 0m' }
+                            ]
+                        },
+                        { 
+                            name: 'Netflix', 
+                            time: '1h 45m', 
+                            active: false, 
+                            icon: 'NF', 
+                            device: null, 
+                            lastAccessed: '3 hours ago',
+                            sessions: [
+                                { start: '20:00', end: '21:45', duration: '1h 45m' }
+                            ]
+                        },
+                        { 
+                            name: 'Spotify', 
+                            time: '2h 10m', 
+                            active: true, 
+                            icon: 'SP', 
+                            device: 'MacBook Pro', 
+                            lastAccessed: null,
+                            sessions: [
+                                { start: '07:30', end: '08:00', duration: '30m' },
+                                { start: '16:00', end: '18:00', duration: '2h 0m' }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    name: 'Gaming',
+                    active: true,
+                    apps: [
+                        { 
+                            name: 'Discord', 
+                            time: '4h 30m', 
+                            active: true, 
+                            icon: 'DC', 
+                            device: 'Samsung Galaxy', 
+                            lastAccessed: null,
+                            sessions: [
+                                { start: '10:00', end: '12:00', duration: '2h 0m' },
+                                { start: '15:00', end: '17:30', duration: '2h 30m' }
+                            ]
+                        },
+                        { 
+                            name: 'Steam', 
+                            time: '2h 15m', 
+                            active: false, 
+                            icon: 'ST', 
+                            device: null, 
+                            lastAccessed: '1 hour ago',
+                            sessions: [
+                                { start: '18:00', end: '20:15', duration: '2h 15m' }
+                            ]
+                        },
+                        { 
+                            name: 'PlayStation', 
+                            time: '1h 20m', 
+                            active: false, 
+                            icon: 'PS', 
+                            device: null, 
+                            lastAccessed: '4 hours ago',
+                            sessions: [
+                                { start: '21:00', end: '22:20', duration: '1h 20m' }
+                            ]
+                        }
+                    ]
+                }
+            ];
+            
+            // Calculate total time across all categories
+            let totalMinutes = 0;
+            categories.forEach(category => {
+                category.apps.forEach(app => {
+                    const timeStr = app.time;
+                    const hours = parseInt(timeStr.match(/(\d+)h/)?.[1] || '0');
+                    const minutes = parseInt(timeStr.match(/(\d+)m/)?.[1] || '0');
+                    totalMinutes += (hours * 60) + minutes;
+                });
+            });
+            
+            const totalHours = Math.floor(totalMinutes / 60);
+            const totalMins = totalMinutes % 60;
+            const totalTime = totalHours > 0 ? `${totalHours}h ${totalMins}m` : `${totalMins}m`;
+            activeTotal.textContent = totalTime;
+            
+            categoriesContainer.innerHTML = '';
+            categories.forEach(category => {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'app-category';
                 
-                if (response.ok) {
-                    showMessage(data.message, 'success');
-                    loadMonitoringStatus();
-                } else {
-                    showMessage(data.error || 'Failed to stop monitoring', 'error');
+                // Calculate total time for category
+                const categoryMinutes = category.apps.reduce((total, app) => {
+                    const timeStr = app.time;
+                    const hours = parseInt(timeStr.match(/(\d+)h/)?.[1] || '0');
+                    const minutes = parseInt(timeStr.match(/(\d+)m/)?.[1] || '0');
+                    return total + (hours * 60) + minutes;
+                }, 0);
+                
+                const categoryHours = Math.floor(categoryMinutes / 60);
+                const categoryMins = categoryMinutes % 60;
+                const categoryTime = categoryHours > 0 ? `${categoryHours}h ${categoryMins}m` : `${categoryMins}m`;
+                
+                const appsHtml = category.apps.map(app => {
+                    const deviceInfo = app.active && app.device ? 
+                        `<div class="app-device">on ${app.device}</div>` : '';
+                    const lastAccessedInfo = !app.active && app.lastAccessed ? 
+                        `<div class="app-last-accessed">Last: ${app.lastAccessed}</div>` : '';
+                    
+                    return `
+                        <div class="app-item ${app.active ? 'active' : ''}" onclick="toggleAppTimeline('${app.name.toLowerCase().replace(' ', '-')}')">
+                            <div class="app-info">
+                                <div class="app-icon">${app.icon}</div>
+                                <div>
+                                    <div class="app-name">${app.name}</div>
+                                    ${deviceInfo}
+                                    ${lastAccessedInfo}
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div class="app-time">${app.time}</div>
+                                <div class="app-dot ${app.active ? 'active' : ''}"></div>
+                            </div>
+                        </div>
+                        <div class="app-timeline" id="${app.name.toLowerCase().replace(' ', '-')}-timeline">
+                            <div class="timeline-sessions">
+                                ${app.sessions.map(session => `
+                                    <div class="timeline-session">
+                                        <div class="timeline-dot"></div>
+                                        <div class="timeline-times">
+                                            <span>${session.start}</span>
+                                            <span>→</span>
+                                            <span>${session.end}</span>
+                                            <span class="timeline-duration">${session.duration}</span>
+                                        </div>
+                                    </div>
+                            `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                categoryDiv.innerHTML = `
+                    <div class="category-header" onclick="toggleCategory('${category.name.toLowerCase().replace(' ', '-')}')">
+                        <div class="category-title">
+                            <div class="category-dot ${category.active ? 'active' : ''}"></div>
+                            <span>${category.name}</span>
+                            <div class="category-total">${categoryTime}</div>
+                        </div>
+                        <div class="category-icon" id="${category.name.toLowerCase().replace(' ', '-')}-icon">▼</div>
+                    </div>
+                    <div class="category-apps" id="${category.name.toLowerCase().replace(' ', '-')}-apps">
+                        ${appsHtml}
+                    </div>
+                `;
+                
+                categoriesContainer.appendChild(categoryDiv);
+            });
+        }
+
+        function loadProfileAlerts(profile) {
+            const alertsList = document.getElementById('alerts-list');
+            const alertsBadge = document.getElementById('alerts-badge');
+            
+            // Mock alert data with seen status
+            const alerts = [
+                {
+                    id: 1,
+                    title: 'Blocked Website Access',
+                    description: 'Attempted to access restricted content',
+                    time: '2 minutes ago',
+                    type: 'blocked',
+                    seen: false
+                },
+                {
+                    id: 2,
+                    title: 'Excessive Screen Time',
+                    description: 'Exceeded daily limit for social media apps',
+                    time: '15 minutes ago',
+                    type: 'warning',
+                    seen: false
+                },
+                {
+                    id: 3,
+                    title: 'Suspicious Activity',
+                    description: 'Unusual network traffic detected',
+                    time: '1 hour ago',
+                    type: 'security',
+                    seen: true
                 }
-            } catch (error) {
-                showMessage('Error stopping monitoring: ' + error.message, 'error');
+            ];
+            
+            const unseenCount = alerts.filter(a => !a.seen).length;
+            
+            if (unseenCount > 0) {
+                alertsBadge.textContent = unseenCount;
+                alertsBadge.style.display = 'block';
+                } else {
+                alertsBadge.style.display = 'none';
+            }
+            
+            alertsList.innerHTML = '';
+            alerts.forEach(alert => {
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert-item ${alert.seen ? 'seen' : ''}`;
+                alertDiv.setAttribute('data-alert-id', alert.id);
+                alertDiv.onclick = () => toggleAlertSeen(alert.id);
+                
+                alertDiv.innerHTML = `
+                    <div class="alert-icon">⚠️</div>
+                    <div class="alert-content">
+                        <div class="alert-title">${alert.title}</div>
+                        <div class="alert-description">${alert.description}</div>
+                    </div>
+                    <div class="alert-time">${alert.time}</div>
+                `;
+                
+                alertsList.appendChild(alertDiv);
+            });
+        }
+
+        function toggleCategory(categoryId) {
+            const apps = document.getElementById(categoryId + '-apps');
+            const icon = document.getElementById(categoryId + '-icon');
+            
+            if (apps.classList.contains('expanded')) {
+                apps.classList.remove('expanded');
+                icon.classList.remove('expanded');
+            } else {
+                apps.classList.add('expanded');
+                icon.classList.add('expanded');
             }
         }
 
-        // Demo data generation removed - use real monitoring only
-
-        // Utility functions
-        function formatBytes(bytes) {
-            if (bytes === 0) return '0 B';
-            const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        // Alert management functions
+        function toggleAlertSeen(alertId) {
+            // Find the alert item and toggle its seen status
+            const alertItem = document.querySelector(`[data-alert-id="${alertId}"]`);
+            if (alertItem) {
+                alertItem.classList.toggle('seen');
+                updateAlertBadge();
+            }
         }
 
-        function showMessage(message, type) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = type;
-            messageDiv.textContent = message;
+        function updateAlertBadge() {
+            const alertsList = document.getElementById('alerts-list');
+            const alertsBadge = document.getElementById('alerts-badge');
+            const unseenAlerts = alertsList.querySelectorAll('.alert-item:not(.seen)');
             
-            const container = document.querySelector('.container');
-            container.insertBefore(messageDiv, container.firstChild);
-            
-            setTimeout(() => {
-                messageDiv.remove();
-            }, 5000);
+            if (unseenAlerts.length > 0) {
+                alertsBadge.textContent = unseenAlerts.length;
+                alertsBadge.style.display = 'block';
+                } else {
+                alertsBadge.style.display = 'none';
+            }
         }
+
+
+        function clearAllAlerts() {
+            // In real implementation, this would delete all alerts from database
+            console.log('Clearing all alerts');
+            const alertsList = document.getElementById('alerts-list');
+            const alertsBadge = document.getElementById('alerts-badge');
+            
+            alertsList.innerHTML = '<div style="text-align: center; color: var(--gray); padding: 20px;">No alerts</div>';
+            alertsBadge.style.display = 'none';
+        }
+
+        // App timeline functions
+        function toggleAppTimeline(appId) {
+            const timeline = document.getElementById(appId + '-timeline');
+            
+            if (timeline.classList.contains('expanded')) {
+                timeline.classList.remove('expanded');
+                } else {
+                // Close any other open timelines first
+                document.querySelectorAll('.app-timeline.expanded').forEach(t => {
+                    t.classList.remove('expanded');
+                });
+                timeline.classList.add('expanded');
+            }
+        }
+
+
+        // Data loading functions (placeholder implementations)
+        async function loadLiveData() {
+            console.log('Loading live data...');
+        }
+
+        async function loadProfilesData() {
+            console.log('Loading profiles data...');
+        }
+
+        async function loadDevicesData() {
+            console.log('Loading devices data...');
+        }
+
+        async function loadHostnamesData() {
+            console.log('Loading hostnames data...');
+        }
+
+        function startAutoRefresh() {
+            // Auto-refresh home data every 30 seconds
+            setInterval(() => {
+                if (currentSection === 'home') {
+                    loadProfiles();
+                }
+            }, 30000);
+        }
+
+        function updateAddButtonVisibility() {
+            const addContainer = document.getElementById('add-profile-container');
+            const bottomButton = document.getElementById('bottom-add-button');
+            const modal = document.getElementById('add-profile-modal');
+            const profileDetail = document.getElementById('profile-detail-section');
+            
+            // Hide add buttons when modal is open or on profile detail screen
+            const shouldHide = modal.classList.contains('active') || 
+                              profileDetail.classList.contains('active');
+            
+            if (shouldHide) {
+                addContainer.style.display = 'none';
+                bottomButton.style.display = 'none';
+            } else {
+                // Show appropriate button based on whether profiles exist
+                const profilesGrid = document.getElementById('profiles-grid');
+                const hasProfiles = profilesGrid.children.length > 0;
+                
+                if (hasProfiles) {
+                    addContainer.style.display = 'none';
+                    bottomButton.style.display = 'block';
+                } else {
+                    addContainer.style.display = 'flex';
+                    bottomButton.style.display = 'none';
+                }
+            }
+        }
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            if (window.innerWidth <= 768 && sidebarOpen) {
+                const sidebar = document.getElementById('sidebar');
+                const hamburger = document.getElementById('hamburger');
+                
+                if (!sidebar.contains(event.target) && !hamburger.contains(event.target)) {
+                    closeSidebar();
+                }
+            }
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) {
+                closeSidebar();
+            }
+        });
     </script>
 </body>
+</html>
 </html>

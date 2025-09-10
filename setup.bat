@@ -79,7 +79,7 @@ echo Setup complete! You can now run start.bat
 echo.
 echo Next steps:
 echo   1. Double-click start.bat to launch NetScanner
-echo   2. Open http://127.0.0.1:5000 in your browser
+echo   2. Open http://127.0.0.1:5002 in your browser
 echo   3. Click "Start Real Monitoring" to begin
 echo.
 pause

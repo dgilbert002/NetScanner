@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from flask import Flask, send_from_directory, jsonify, request
 from flask_cors import CORS
 from src.models.user import db
+from datetime import datetime, timedelta
 
 # Check if enhanced features should be enabled
 ENABLE_ENHANCED = os.getenv('ENABLE_ENHANCED', '0').lower() in ('1', 'true', 'yes')
@@ -74,13 +75,21 @@ try:
 except ImportError as e:
     print(f"⚠️ Could not load comprehensive API: {e}")
 
-# Register group management routes
+# Register group management routes (legacy)
 try:
     from src.routes.group_management import group_management_bp
     app.register_blueprint(group_management_bp)
-    print("✅ Group management routes loaded")
+    print("✅ Group management routes loaded (legacy)")
 except ImportError as e:
     print(f"⚠️ Could not load group management: {e}")
+
+# Register profile management routes (new)
+try:
+    from src.routes.profile_management import profile_management_bp
+    app.register_blueprint(profile_management_bp)
+    print("✅ Profile management routes loaded")
+except ImportError as e:
+    print(f"⚠️ Could not load profile management: {e}")
 
 # Register device admin routes
 try:
@@ -224,25 +233,103 @@ def generate_enhanced_demo():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Dashboard API endpoints
+@app.route('/api/dashboard/stats')
+def get_dashboard_stats():
+    """Get dashboard statistics"""
+    try:
+        # Get device count
+        device_count = Device.query.count()
+        
+        # Get active profiles count (from new profile system)
+        try:
+            import sqlite3
+            import os
+            db_path = os.path.join(os.path.dirname(__file__), 'database', 'enhanced_network_monitor.db')
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            cur.execute('SELECT COUNT(*) FROM user_profiles WHERE is_active = 1')
+            profile_count = cur.fetchone()[0]
+            conn.close()
+        except:
+            profile_count = 0
+        
+        # Get live sessions (active traffic sessions)
+        try:
+            from src.models.network import TrafficSession
+            live_sessions = TrafficSession.query.filter(
+                TrafficSession.end_time.is_(None)
+            ).count()
+        except:
+            live_sessions = 0
+        
+        # Get data transferred (sum of recent traffic)
+        try:
+            from src.models.network import TrafficSession
+            from sqlalchemy import func
+            data_transferred = db.session.query(
+                func.sum(TrafficSession.bytes_transferred)
+            ).filter(
+                TrafficSession.start_time >= datetime.utcnow() - timedelta(hours=1)
+            ).scalar() or 0
+        except:
+            data_transferred = 0
+        
+        return jsonify({
+            'total_devices': device_count,
+            'active_profiles': profile_count,
+            'live_sessions': live_sessions,
+            'data_transferred': data_transferred
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/traffic/live')
+def get_live_traffic():
+    """Get live traffic data"""
+    try:
+        # This would typically come from real-time packet capture
+        # For now, return empty array
+        return jsonify({
+            'traffic': [],
+            'timestamp': datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/hostnames')
+def get_hostnames():
+    """Get hostname and application data"""
+    try:
+        # This would come from a hostnames table
+        # For now, return empty array
+        return jsonify({
+            'hostnames': []
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 with app.app_context():
     db.create_all()
 
-@app.route('/', defaults={'path': ''})
+@app.route('/')
+def serve_dashboard():
+    """Serve the main dashboard"""
+    return send_from_directory(app.static_folder, 'index.html')
+
 @app.route('/<path:path>')
-def serve(path):
+def serve_static(path):
+    """Serve static files"""
     static_folder_path = app.static_folder
     if static_folder_path is None:
-            return "Static folder not configured", 404
+        return "Static folder not configured", 404
 
-    if path != "" and os.path.exists(os.path.join(static_folder_path, path)):
+    if os.path.exists(os.path.join(static_folder_path, path)):
         return send_from_directory(static_folder_path, path)
     else:
-        index_path = os.path.join(static_folder_path, 'index.html')
-        if os.path.exists(index_path):
-            return send_from_directory(static_folder_path, 'index.html')
-        else:
-            return "index.html not found", 404
+        # Fallback to index for SPA routing
+        return send_from_directory(static_folder_path, 'index.html')
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5002, debug=True)

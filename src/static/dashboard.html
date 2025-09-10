@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetScanner - Network Monitoring Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5a67d8;
+            --secondary: #764ba2;
+            --success: #48bb78;
+            --warning: #f6ad55;
+            --danger: #fc8181;
+            --dark: #2d3748;
+            --gray: #718096;
+            --light: #f7fafc;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f7fafc;
+            color: #2d3748;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 260px;
+            height: 100vh;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 2rem 1rem;
+            overflow-y: auto;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 3rem;
+            padding: 0 1rem;
+        }
+
+        .logo svg {
+            width: 40px;
+            height: 40px;
+            fill: white;
+        }
+
+        .logo h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem 1rem;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .nav-link.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .badge {
+            margin-left: auto;
+            padding: 0.25rem 0.5rem;
+            background: var(--danger);
+            color: white;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 260px;
+            min-height: 100vh;
+            transition: margin-left 0.3s ease;
+        }
+
+        .main-content.expanded {
+            margin-left: 0;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--gray);
+            color: white;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        /* Dashboard Content */
+        .dashboard-content {
+            padding: 2rem;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .stat-title {
+            color: var(--gray);
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .stat-change {
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+
+        .stat-change.positive {
+            color: var(--success);
+        }
+
+        .stat-change.negative {
+            color: var(--danger);
+        }
+
+        /* Tables */
+        .data-table {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .table-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f7fafc;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--gray);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tbody tr:hover {
+            background: #f7fafc;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .status-inactive {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .status-new {
+            background: #feebc8;
+            color: #7c2d12;
+        }
+
+        /* Mobile Responsive */
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--dark);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .menu-toggle {
+                display: block;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            border: 3px solid var(--border);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Hidden sections */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="logo">
+            <svg viewBox="0 0 24 24">
+                <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+            </svg>
+            <h1>NetScanner</h1>
+        </div>
+        
+        <nav>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="#dashboard" class="nav-link active" onclick="showSection('dashboard')">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+                        </svg>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#live" class="nav-link" onclick="showSection('live')">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M11 17c0 .55.45 1 1 1s1-.45 1-1-.45-1-1-1-1 .45-1 1zm0-14v4h2V5.08c3.39.49 6 3.39 6 6.92 0 3.87-3.13 7-7 7s-7-3.13-7-7c0-1.68.59-3.22 1.58-4.42L12 13l1.41-1.41-6.8-6.8v.02C4.42 6.45 3 9.05 3 12c0 4.97 4.02 9 9 9 4.97 0 9-4.03 9-9s-4.03-9-9-9h-1zm7 9c0-.55-.45-1-1-1s-1 .45-1 1 .45 1 1 1 1-.45 1-1zM6 12c0 .55.45 1 1 1s1-.45 1-1-.45-1-1-1-1 .45-1 1z"/>
+                        </svg>
+                        <span>Live</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#profiles" class="nav-link" onclick="showSection('profiles')">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                        </svg>
+                        <span>Profiles</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#devices" class="nav-link" onclick="showSection('devices')">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/>
+                        </svg>
+                        <span>Devices</span>
+                        <span class="badge" id="devices-badge" style="display:none;">0</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#hostnames" class="nav-link" onclick="showSection('hostnames')">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L2 7v10l10 5 10-5V7l-10-5zm0 3.09L18.26 7 12 10.91 5.74 7 12 5.09zM4 8.82l7 3.89v6.97L4 15.78V8.82zm16 6.96l-7 3.9v-6.97l7-3.89v6.96z"/>
+                        </svg>
+                        <span>Hostnames</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content" id="main-content">
+        <!-- Header -->
+        <header class="header">
+            <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+            <h2 class="header-title" id="page-title">Dashboard</h2>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="refreshData()">Refresh</button>
+            </div>
+        </header>
+
+        <!-- Dashboard Content -->
+        <div class="dashboard-content">
+            <!-- Dashboard Section -->
+            <div id="dashboard-section" class="tab-content active">
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Devices</span>
+                            <div class="stat-icon" style="background: rgba(102, 126, 234, 0.1); color: var(--primary);">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="total-devices">0</div>
+                        <div class="stat-change positive">+5% from last week</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Active Profiles</span>
+                            <div class="stat-icon" style="background: rgba(72, 187, 120, 0.1); color: var(--success);">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="active-profiles">0</div>
+                        <div class="stat-change positive">+2% from last month</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Live Sessions</span>
+                            <div class="stat-icon" style="background: rgba(246, 173, 85, 0.1); color: var(--warning);">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="live-sessions">0</div>
+                        <div class="stat-change negative">-3% from yesterday</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Data Transferred</span>
+                            <div class="stat-icon" style="background: rgba(252, 129, 129, 0.1); color: var(--danger);">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="data-transferred">0 MB</div>
+                        <div class="stat-change positive">+12% from last hour</div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="data-table">
+                    <div class="table-header">
+                        <h3 class="table-title">Recent Network Activity</h3>
+                        <div class="table-actions">
+                            <button class="btn btn-secondary" onclick="refreshActivity()">Refresh</button>
+                        </div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Device</th>
+                                <th>Profile</th>
+                                <th>Destination</th>
+                                <th>Protocol</th>
+                                <th>Data Size</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activity-table">
+                            <!-- Activity rows will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Live Section -->
+            <div id="live-section" class="tab-content">
+                <div class="data-table">
+                    <div class="table-header">
+                        <h3 class="table-title">Live Traffic Monitoring</h3>
+                        <div class="table-actions">
+                            <button class="btn btn-success" onclick="startLiveMonitoring()">Start Monitoring</button>
+                            <button class="btn btn-danger" onclick="stopLiveMonitoring()">Stop Monitoring</button>
+                        </div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Source IP</th>
+                                <th>Destination IP</th>
+                                <th>Protocol</th>
+                                <th>Size</th>
+                                <th>Device</th>
+                                <th>Profile</th>
+                            </tr>
+                        </thead>
+                        <tbody id="live-traffic-table">
+                            <!-- Live traffic rows will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Profiles Section -->
+            <div id="profiles-section" class="tab-content">
+                <div class="data-table">
+                    <div class="table-header">
+                        <h3 class="table-title">Profile Management</h3>
+                        <div class="table-actions">
+                            <button class="btn btn-primary" onclick="createProfile()">+ Add Profile</button>
+                        </div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Devices</th>
+                                <th>Created</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="profiles-table">
+                            <!-- Profile rows will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Devices Section -->
+            <div id="devices-section" class="tab-content">
+                <div class="data-table">
+                    <div class="table-header">
+                        <h3 class="table-title">Device Management</h3>
+                        <div class="table-actions">
+                            <button class="btn btn-primary" onclick="scanForDevices()">Scan Network</button>
+                            <button class="btn btn-secondary" onclick="refreshDevices()">Refresh</button>
+                        </div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>MAC Address</th>
+                                <th>IP Address</th>
+                                <th>Hostname</th>
+                                <th>Friendly Name</th>
+                                <th>Vendor</th>
+                                <th>Type</th>
+                                <th>Profile</th>
+                                <th>Last Seen</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="devices-table">
+                            <!-- Device rows will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Hostnames Section -->
+            <div id="hostnames-section" class="tab-content">
+                <div class="data-table">
+                    <div class="table-header">
+                        <h3 class="table-title">Hostname & Application Management</h3>
+                        <div class="table-actions">
+                            <button class="btn btn-primary" onclick="addHostname()">+ Add Hostname</button>
+                            <button class="btn btn-secondary" onclick="importHostnames()">Import</button>
+                        </div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>IP Address</th>
+                                <th>Hostname</th>
+                                <th>Application</th>
+                                <th>Category</th>
+                                <th>Last Resolved</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hostnames-table">
+                            <!-- Hostname rows will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Global variables
+        let currentSection = 'dashboard';
+        let liveMonitoring = false;
+        let refreshInterval = null;
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboardData();
+            startAutoRefresh();
+        });
+
+        // Navigation functions
+        function showSection(section) {
+            // Hide all sections
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Remove active class from all nav links
+            document.querySelectorAll('.nav-link').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Show selected section
+            document.getElementById(section + '-section').classList.add('active');
+            
+            // Add active class to selected nav link
+            event.target.closest('.nav-link').classList.add('active');
+            
+            // Update page title
+            document.getElementById('page-title').textContent = 
+                section.charAt(0).toUpperCase() + section.slice(1);
+            
+            currentSection = section;
+            
+            // Load section-specific data
+            switch(section) {
+                case 'dashboard':
+                    loadDashboardData();
+                    break;
+                case 'live':
+                    loadLiveData();
+                    break;
+                case 'profiles':
+                    loadProfilesData();
+                    break;
+                case 'devices':
+                    loadDevicesData();
+                    break;
+                case 'hostnames':
+                    loadHostnamesData();
+                    break;
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('main-content');
+            
+            sidebar.classList.toggle('collapsed');
+            mainContent.classList.toggle('expanded');
+        }
+
+        // Data loading functions
+        async function loadDashboardData() {
+            try {
+                // Load statistics
+                const statsResponse = await fetch('/api/dashboard/stats');
+                const stats = await statsResponse.json();
+                
+                document.getElementById('total-devices').textContent = stats.total_devices || 0;
+                document.getElementById('active-profiles').textContent = stats.active_profiles || 0;
+                document.getElementById('live-sessions').textContent = stats.live_sessions || 0;
+                document.getElementById('data-transferred').textContent = formatBytes(stats.data_transferred || 0);
+                
+                // Load recent activity
+                loadRecentActivity();
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+            }
+        }
+
+        async function loadRecentActivity() {
+            try {
+                const response = await fetch('/api/traffic/summary');
+                const data = await response.json();
+                
+                const tbody = document.getElementById('activity-table');
+                tbody.innerHTML = '';
+                
+                if (data.recent_activity && data.recent_activity.length > 0) {
+                    data.recent_activity.forEach(activity => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${formatTime(activity.timestamp)}</td>
+                            <td>${activity.device_name || 'Unknown'}</td>
+                            <td>${activity.profile_name || 'Unassigned'}</td>
+                            <td>${activity.destination || 'Unknown'}</td>
+                            <td>${activity.protocol || 'Unknown'}</td>
+                            <td>${formatBytes(activity.size || 0)}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #718096;">No recent activity</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error loading recent activity:', error);
+            }
+        }
+
+        async function loadLiveData() {
+            if (liveMonitoring) {
+                try {
+                    const response = await fetch('/api/traffic/live');
+                    const data = await response.json();
+                    
+                    const tbody = document.getElementById('live-traffic-table');
+                    tbody.innerHTML = '';
+                    
+                    if (data.traffic && data.traffic.length > 0) {
+                        data.traffic.forEach(packet => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${formatTime(packet.timestamp)}</td>
+                                <td>${packet.src_ip}</td>
+                                <td>${packet.dst_ip}</td>
+                                <td>${packet.protocol}</td>
+                                <td>${formatBytes(packet.size)}</td>
+                                <td>${packet.device_name || 'Unknown'}</td>
+                                <td>${packet.profile_name || 'Unassigned'}</td>
+                            `;
+                            tbody.appendChild(row);
+                        });
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #718096;">No live traffic data</td></tr>';
+                    }
+                } catch (error) {
+                    console.error('Error loading live data:', error);
+                }
+            }
+        }
+
+        async function loadProfilesData() {
+            try {
+                const response = await fetch('/api/v2/profiles/list');
+                const data = await response.json();
+                
+                const tbody = document.getElementById('profiles-table');
+                tbody.innerHTML = '';
+                
+                if (data.profiles && data.profiles.length > 0) {
+                    data.profiles.forEach(profile => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${profile.id}</td>
+                            <td>${profile.name}</td>
+                            <td>${profile.description || 'No description'}</td>
+                            <td>${profile.device_count || 0}</td>
+                            <td>${formatDate(profile.created_at)}</td>
+                            <td><span class="status-badge ${profile.is_active ? 'status-active' : 'status-inactive'}">${profile.is_active ? 'Active' : 'Inactive'}</span></td>
+                            <td>
+                                <button class="btn btn-secondary" onclick="editProfile(${profile.id})">Edit</button>
+                                <button class="btn btn-danger" onclick="deleteProfile(${profile.id})">Delete</button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #718096;">No profiles found</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error loading profiles data:', error);
+            }
+        }
+
+        async function loadDevicesData() {
+            try {
+                const response = await fetch('/api/devices');
+                const data = await response.json();
+                
+                const tbody = document.getElementById('devices-table');
+                tbody.innerHTML = '';
+                
+                if (data.devices && data.devices.length > 0) {
+                    data.devices.forEach(device => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${device.mac_address || 'Unknown'}</td>
+                            <td>${device.ip_address || 'Unknown'}</td>
+                            <td>${device.hostname || 'Unknown'}</td>
+                            <td>${device.friendly_name || 'Not set'}</td>
+                            <td>${device.vendor || 'Unknown'}</td>
+                            <td>${device.device_type || 'Unknown'}</td>
+                            <td>${device.profile_name || 'Unassigned'}</td>
+                            <td>${formatTime(device.last_seen)}</td>
+                            <td><span class="status-badge ${device.is_active ? 'status-active' : 'status-inactive'}">${device.is_active ? 'Active' : 'Inactive'}</span></td>
+                            <td>
+                                <button class="btn btn-secondary" onclick="editDevice(${device.id})">Edit</button>
+                                <button class="btn btn-warning" onclick="assignProfile(${device.id})">Assign</button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #718096;">No devices found</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error loading devices data:', error);
+            }
+        }
+
+        async function loadHostnamesData() {
+            try {
+                const response = await fetch('/api/hostnames');
+                const data = await response.json();
+                
+                const tbody = document.getElementById('hostnames-table');
+                tbody.innerHTML = '';
+                
+                if (data.hostnames && data.hostnames.length > 0) {
+                    data.hostnames.forEach(hostname => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${hostname.ip_address}</td>
+                            <td>${hostname.hostname}</td>
+                            <td>${hostname.application || 'Unknown'}</td>
+                            <td>${hostname.category || 'Uncategorized'}</td>
+                            <td>${formatTime(hostname.last_resolved)}</td>
+                            <td>
+                                <button class="btn btn-secondary" onclick="editHostname(${hostname.id})">Edit</button>
+                                <button class="btn btn-danger" onclick="deleteHostname(${hostname.id})">Delete</button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #718096;">No hostnames found</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error loading hostnames data:', error);
+            }
+        }
+
+        // Action functions
+        function startLiveMonitoring() {
+            liveMonitoring = true;
+            loadLiveData();
+            refreshInterval = setInterval(loadLiveData, 2000); // Refresh every 2 seconds
+        }
+
+        function stopLiveMonitoring() {
+            liveMonitoring = false;
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+        }
+
+        function refreshData() {
+            switch(currentSection) {
+                case 'dashboard':
+                    loadDashboardData();
+                    break;
+                case 'live':
+                    loadLiveData();
+                    break;
+                case 'profiles':
+                    loadProfilesData();
+                    break;
+                case 'devices':
+                    loadDevicesData();
+                    break;
+                case 'hostnames':
+                    loadHostnamesData();
+                    break;
+            }
+        }
+
+        function refreshActivity() {
+            loadRecentActivity();
+        }
+
+        function refreshDevices() {
+            loadDevicesData();
+        }
+
+        function scanForDevices() {
+            // TODO: Implement network scanning
+            alert('Network scanning feature coming soon!');
+        }
+
+        function createProfile() {
+            // TODO: Implement profile creation modal
+            alert('Profile creation feature coming soon!');
+        }
+
+        function editProfile(id) {
+            // TODO: Implement profile editing
+            alert(`Edit profile ${id} - coming soon!`);
+        }
+
+        function deleteProfile(id) {
+            if (confirm('Are you sure you want to delete this profile?')) {
+                // TODO: Implement profile deletion
+                alert(`Delete profile ${id} - coming soon!`);
+            }
+        }
+
+        function editDevice(id) {
+            // TODO: Implement device editing
+            alert(`Edit device ${id} - coming soon!`);
+        }
+
+        function assignProfile(id) {
+            // TODO: Implement profile assignment
+            alert(`Assign profile to device ${id} - coming soon!`);
+        }
+
+        function addHostname() {
+            // TODO: Implement hostname addition
+            alert('Add hostname feature coming soon!');
+        }
+
+        function editHostname(id) {
+            // TODO: Implement hostname editing
+            alert(`Edit hostname ${id} - coming soon!`);
+        }
+
+        function deleteHostname(id) {
+            if (confirm('Are you sure you want to delete this hostname?')) {
+                // TODO: Implement hostname deletion
+                alert(`Delete hostname ${id} - coming soon!`);
+            }
+        }
+
+        function importHostnames() {
+            // TODO: Implement hostname import
+            alert('Import hostnames feature coming soon!');
+        }
+
+        // Utility functions
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function formatTime(timestamp) {
+            if (!timestamp) return 'Never';
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString();
+        }
+
+        function formatDate(timestamp) {
+            if (!timestamp) return 'Never';
+            const date = new Date(timestamp);
+            return date.toLocaleDateString();
+        }
+
+        function startAutoRefresh() {
+            // Auto-refresh dashboard data every 30 seconds
+            setInterval(() => {
+                if (currentSection === 'dashboard') {
+                    loadDashboardData();
+                }
+            }, 30000);
+        }
+    </script>
+</body>
+</html>

@@ -2,51 +2,25 @@
 
 ## 🚀 How to Start the Application
 
-I've created several start scripts to make it easy to launch your NetScanner application. Choose the method that works best for you:
+Starting NetScanner is now super simple! Just use one file:
 
-### Option 1: Windows Batch Files (Recommended)
-**For Base Features (Default):**
-```bash
-# Double-click or run from command prompt:
-start_app.bat
-```
+### Single Start Method
+**Double-click `start.bat`** - This will:
+- Start the NetScanner server on port 5002
+- Automatically open your web browser to the dashboard
+- Show you the command window (press any key to stop the server)
 
-**For Enhanced Features:**
-```bash
-# Double-click or run from command prompt:
-start_enhanced.bat
-```
-
-### Option 2: PowerShell Scripts
-**For Base Features:**
-```powershell
-# Right-click and "Run with PowerShell" or run from command prompt:
-.\start_app.ps1
-```
-
-**For Enhanced Features:**
-```powershell
-# Right-click and "Run with PowerShell" or run from command prompt:
-.\start_enhanced.ps1
-```
-
-### Option 3: Manual Command Line
-**For Base Features:**
+### Manual Command Line (Alternative)
 ```bash
 .\venv\Scripts\python.exe .\src\main.py
 ```
-
-**For Enhanced Features:**
-```bash
-set ENABLE_ENHANCED=1
-.\venv\Scripts\python.exe .\src\main.py
-```
+Then manually open http://127.0.0.1:5002 in your browser.
 
 ## 🌐 Access Your Application
 
 Once started, you can access the NetScanner application at:
-- **Local**: http://127.0.0.1:5000
-- **Network**: http://192.168.50.45:5000 (or your local IP)
+- **Local**: http://127.0.0.1:5002
+- **Network**: http://192.168.50.45:5002 (or your local IP)
 
 ## 📋 What Each Script Does
 
@@ -77,7 +51,7 @@ Once started, you can access the NetScanner application at:
 
 **If the app doesn't start:**
 - Check the error messages in the terminal
-- Make sure port 5000 is not being used by another application
+- Make sure port 5002 is not being used by another application
 
 ## 📁 File Structure
 ```
@@ -93,7 +67,7 @@ network-monitor/
 
 ## 🎯 Quick Start
 1. **Double-click** `start_app.bat` to start with base features
-2. **Open your browser** and go to http://127.0.0.1:5000
+2. **Open your browser** and go to http://127.0.0.1:5002
 3. **Enjoy** your NetScanner application!
 
 For enhanced features, use `start_enhanced.bat` instead.

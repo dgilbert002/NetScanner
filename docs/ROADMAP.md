@@ -61,8 +61,8 @@ set ENABLE_ENHANCED=1
 ```
 
 ### Accessing the Application
-- **Local**: http://127.0.0.1:5000
-- **Network**: http://192.168.50.45:5000 (or your local IP)
+- **Local**: http://127.0.0.1:5002
+- **Network**: http://192.168.50.45:5002 (or your local IP)
 
 ## API Endpoints Available
 

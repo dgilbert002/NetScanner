@@ -49,8 +49,8 @@ echo.
 echo Setup complete! Starting NetScanner...
 echo.
 echo Access your dashboard at:
-echo    Local:  http://127.0.0.1:5000
-echo    Network: http://192.168.50.45:5000
+echo    Local:  http://127.0.0.1:5002
+echo    Network: http://192.168.50.45:5002
 echo.
 echo Instructions:
 echo    1. Monitoring starts AUTOMATICALLY when app launches
@@ -61,10 +61,27 @@ echo.
 echo Note: Run as Administrator if packet capture fails
 echo.
 
-REM Start the Flask application
+REM Start the Flask application in background and open browser
 echo Launching NetScanner Dashboard...
+echo Opening web browser...
 echo.
-venv\Scripts\python src\main.py
+
+REM Start the Flask application in background
+start /B venv\Scripts\python src\main.py
+
+REM Wait a moment for the server to start
+timeout /t 3 /nobreak >nul
+
+REM Open the web browser
+start http://127.0.0.1:5002
+
+REM Wait for user to press a key before stopping
+echo.
+echo NetScanner is running! Press any key to stop the server...
+pause >nul
+
+REM Stop the Python process
+taskkill /f /im python.exe >nul 2>&1
 
 echo.
 echo NetScanner stopped. Press any key to exit...
