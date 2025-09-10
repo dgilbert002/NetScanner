@@ -843,6 +843,601 @@
             color: var(--dark);
         }
 
+        /* Live Tab Styles */
+        .live-filters {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .filter-section {
+            margin-bottom: 20px;
+        }
+
+        .filter-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .filter-section h3 {
+            margin: 0 0 15px 0;
+            color: var(--dark);
+            font-size: 1.1rem;
+        }
+
+        .filter-section h4 {
+            margin: 0 0 10px 0;
+            color: var(--gray);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .time-filter-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .time-tab {
+            padding: 8px 16px;
+            border: 2px solid var(--border);
+            border-radius: 20px;
+            background: white;
+            color: var(--gray);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .time-tab:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .time-tab.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .profile-filters, .category-filters, .app-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            width: 100%;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: nowrap;
+            width: 100%;
+        }
+
+        .filter-group {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-group h4 {
+            margin: 0 0 8px 0;
+            color: var(--gray);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        /* Live Profiles Section */
+        .live-profiles-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .live-profiles-section h3 {
+            margin: 0 0 15px 0;
+            color: var(--dark);
+            font-size: 1.1rem;
+        }
+
+        .live-profiles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .live-profile-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .live-profile-card:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+        }
+
+        .live-profile-card.selected {
+            border-color: var(--primary);
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .live-profile-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary);
+            margin: 0 auto 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 1.2rem;
+        }
+
+        .live-profile-name {
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 4px;
+            font-size: 0.9rem;
+        }
+
+        .live-profile-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            font-size: 0.75rem;
+            color: var(--gray);
+        }
+
+        .live-status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        .live-status-dot.offline {
+            background: var(--gray);
+            animation: none;
+        }
+
+        .live-profile-time {
+            font-size: 0.7rem;
+            color: var(--gray);
+            margin-top: 2px;
+        }
+
+        .filter-group {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .category-filters, .app-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .filter-chip {
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: white;
+            color: var(--gray);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .filter-chip:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .filter-chip.selected {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .filter-chip .count {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+        }
+
+        .live-traffic-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+
+        .traffic-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .traffic-title-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .traffic-title-section h3 {
+            margin: 0;
+            color: var(--dark);
+        }
+
+        .traffic-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .time-filter-section h4 {
+            margin: 0 0 8px 0;
+            color: var(--gray);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .active-filters-section h4 {
+            margin: 0 0 8px 0;
+            color: var(--gray);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .traffic-actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .alert-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            background: var(--danger);
+            color: white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .alert-badge:hover {
+            background: #e53e3e;
+            transform: translateY(-1px);
+        }
+
+        .alert-badge.filtered {
+            background: var(--primary);
+        }
+
+        .alert-badge.filtered:hover {
+            background: var(--primary-dark);
+        }
+
+        .alert-icon {
+            font-size: 1rem;
+        }
+
+        .alert-count {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        .active-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .active-filter {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--primary);
+            color: white;
+            border-radius: 16px;
+            font-size: 0.85rem;
+        }
+
+        .active-filter .remove {
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .active-filter .remove:hover {
+            color: #ff6b6b;
+        }
+
+        .traffic-table-container {
+            overflow-x: auto;
+        }
+
+        .traffic-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .traffic-table th {
+            background: #f8f9fa;
+            padding: 12px 8px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--gray);
+            font-size: 0.85rem;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .traffic-table th.sortable {
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.3s ease;
+        }
+
+        .traffic-table th.sortable:hover {
+            background: #e9ecef;
+        }
+
+        .sort-icon {
+            margin-left: 5px;
+            opacity: 0.5;
+            transition: opacity 0.3s ease;
+        }
+
+        .traffic-table th.sort-asc .sort-icon::after {
+            content: '↑';
+            opacity: 1;
+        }
+
+        .traffic-table th.sort-desc .sort-icon::after {
+            content: '↓';
+            opacity: 1;
+        }
+
+        .traffic-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #f1f3f4;
+            font-size: 0.85rem;
+            vertical-align: top;
+        }
+
+        .traffic-table tbody tr {
+            transition: background-color 0.2s ease;
+        }
+
+        .traffic-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .traffic-table tbody tr.selected {
+            background: #e3f2fd;
+        }
+
+        .device-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .device-name {
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .device-ip {
+            font-size: 0.75rem;
+            color: var(--gray);
+            font-family: 'Courier New', monospace;
+        }
+
+        .session-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-active {
+            background: var(--success);
+        }
+
+        .status-inactive {
+            background: var(--gray);
+            animation: none;
+        }
+
+        .accessing-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .accessing-app {
+            font-weight: 500;
+            color: var(--dark);
+        }
+
+        .accessing-time {
+            font-size: 0.75rem;
+            color: var(--gray);
+        }
+
+        .duration-info {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: var(--dark);
+        }
+
+        .data-info {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: var(--dark);
+        }
+
+        .ip-mac {
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+        }
+
+        .ip-address {
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .mac-address {
+            color: var(--gray);
+        }
+
+        .category-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .category-social { background: #e3f2fd; color: #1976d2; }
+        .category-gaming { background: #f3e5f5; color: #7b1fa2; }
+        .category-work { background: #e8f5e8; color: #388e3c; }
+        .category-education { background: #fff3e0; color: #f57c00; }
+        .category-entertainment { background: #fce4ec; color: #c2185b; }
+        .category-unknown { background: #f5f5f5; color: #757575; }
+
+        .app-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .app-name {
+            font-weight: 500;
+            color: var(--dark);
+        }
+
+        .app-url {
+            font-size: 0.75rem;
+            color: var(--gray);
+            font-family: 'Courier New', monospace;
+        }
+
+        .target-info {
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+        }
+
+        .target-resolved {
+            color: var(--success);
+            font-weight: 500;
+        }
+
+        .target-unresolved {
+            color: var(--warning);
+        }
+
+        .protocol-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .protocol-http { background: #e3f2fd; color: #1976d2; }
+        .protocol-https { background: #e8f5e8; color: #388e3c; }
+        .protocol-tcp { background: #fff3e0; color: #f57c00; }
+        .protocol-udp { background: #fce4ec; color: #c2185b; }
+
+        .data-usage {
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            color: var(--gray);
+        }
+
+        .timestamp {
+            font-size: 0.8rem;
+            color: var(--gray);
+        }
+
+        .clickable-cell {
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .clickable-cell:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .clickable-cell.filtered {
+            background: rgba(102, 126, 234, 0.2);
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .filter-row {
+                flex-direction: column;
+                flex-wrap: wrap;
+            }
+            
+            .filter-group {
+                min-width: unset;
+                flex: none;
+            }
+            
+            .traffic-table {
+                font-size: 0.8rem;
+            }
+            
+            .traffic-table th,
+            .traffic-table td {
+                padding: 8px 4px;
+            }
+        }
+
         /* Bottom Action Button */
         .bottom-action {
             position: fixed;
@@ -870,6 +1465,10 @@
         @media (max-width: 768px) {
             .profiles-grid {
                 grid-template-columns: 1fr;
+            }
+            
+            .live-profiles-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             }
             
             .sidebar {
@@ -1198,14 +1797,11 @@
                     <!-- Profile cards will be inserted here -->
                 </div>
 
-                <!-- Add Profile Button - Only show when no profiles -->
-                <div class="add-profile-container" id="add-profile-container">
-                    <button class="add-profile-button" onclick="showAddProfileModal()">+</button>
-            </div>
+                <!-- Add Profile Button removed - profiles managed in Profiles tab -->
         </div>
 
             <!-- Profile Detail Section -->
-            <div id="profile-detail-section" class="profile-detail">
+            <div id="profile-detail-section" class="profile-detail tab-content">
                 <div class="profile-detail-header">
                     <button class="back-button" onclick="showDashboard()">←</button>
                     <div class="profile-detail-title">
@@ -1278,9 +1874,80 @@
 
             <!-- Other sections (Live, Profiles, Devices, Hostnames) -->
             <div id="live-section" class="tab-content">
-                <div style="text-align: center; padding: 40px; color: var(--gray);">
-                    <h2>Live Traffic Monitoring</h2>
-                    <p>Real-time network traffic will be displayed here</p>
+                <!-- Profile Cards (Small) -->
+                <div class="live-profiles-section">
+                    <h3>Family Members</h3>
+                    <div class="live-profiles-grid" id="live-profiles-grid">
+                        <!-- Profile cards will be populated here -->
+                    </div>
+                </div>
+                
+                <!-- Category and App Filters -->
+                <div class="live-filters">
+                    <div class="filter-section">
+                        <div class="filter-row">
+                            <div class="filter-group">
+                                <h4>Categories</h4>
+                                <div class="category-filters" id="category-filters">
+                                    <!-- Category filters will be populated here -->
+                                </div>
+                            </div>
+                            <div class="filter-group">
+                                <h4>Applications</h4>
+                                <div class="app-filters" id="app-filters">
+                                    <!-- App filters will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Time Filter and Active Filters -->
+                <div class="live-traffic-section">
+                    <div class="traffic-header">
+                        <div class="traffic-title-section">
+                            <h3>Live Network Traffic</h3>
+                            <div class="alert-badge" id="live-alert-badge" onclick="toggleAlertFilter()">
+                                <span class="alert-icon">⚠️</span>
+                                <span class="alert-count">0</span>
+                            </div>
+                        </div>
+                        <div class="traffic-controls">
+                            <div class="time-filter-section">
+                                <h4>Time Range</h4>
+                                <div class="time-filter-tabs" id="time-filter-tabs">
+                                    <div class="time-tab active" data-range="15min">Last 15 min</div>
+                                    <div class="time-tab" data-range="1hour">Last 1 hour</div>
+                                    <div class="time-tab" data-range="2hours">Last 2 hours</div>
+                                    <div class="time-tab" data-range="daily">Today</div>
+                                </div>
+                            </div>
+                            <div class="active-filters-section" id="active-filters-section" style="display: none;">
+                                <h4>Active Filters</h4>
+                                <div class="active-filters" id="active-filters">
+                                    <!-- Active filters will be displayed here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="traffic-table-container">
+                        <table class="traffic-table" id="traffic-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" data-sort="device">Device <span class="sort-icon">↕</span></th>
+                                    <th class="sortable" data-sort="category">Category <span class="sort-icon">↕</span></th>
+                                    <th class="sortable" data-sort="accessing">Accessing <span class="sort-icon">↕</span></th>
+                                    <th class="sortable" data-sort="duration">Duration <span class="sort-icon">↕</span></th>
+                                    <th class="sortable" data-sort="data">Data <span class="sort-icon">↕</span></th>
+                                    <th class="sortable" data-sort="status">Status <span class="sort-icon">↕</span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="traffic-tbody">
+                                <!-- Traffic rows will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -1352,10 +2019,677 @@
         let sidebarOpen = false;
         let refreshInterval = null;
 
+        // Live Tab Functionality
+        let liveData = {
+            // SAMPLE DATA - Replace with real API calls
+            profiles: [
+                { id: 'profile_1', name: 'John Doe', picture: null },
+                { id: 'profile_2', name: 'Jane Smith', picture: null },
+                { id: 'profile_3', name: 'Kids', picture: null }
+            ],
+            categories: [
+                { id: 'social', name: 'Social Media', count: 15 },
+                { id: 'gaming', name: 'Gaming', count: 8 },
+                { id: 'work', name: 'Work', count: 12 },
+                { id: 'education', name: 'Education', count: 6 },
+                { id: 'entertainment', name: 'Entertainment', count: 20 }
+            ],
+            apps: [
+                { id: 'instagram', name: 'Instagram', category: 'social', url: 'instagram.com' },
+                { id: 'facebook', name: 'Facebook', category: 'social', url: 'facebook.com' },
+                { id: 'playstation', name: 'PlayStation Network', category: 'gaming', url: 'playstation.com' },
+                { id: 'netflix', name: 'Netflix', category: 'entertainment', url: 'netflix.com' },
+                { id: 'youtube', name: 'YouTube', category: 'entertainment', url: 'youtube.com' },
+                { id: 'slack', name: 'Slack', category: 'work', url: 'slack.com' }
+            ],
+            // SAMPLE SESSIONS - Replace with real aggregated session data
+            sessions: [],
+            filters: {
+                profiles: [],
+                categories: [],
+                apps: [],
+                alerts: false,
+                timeRange: '15min'
+            },
+            activeFilters: [],
+            sortColumn: null,
+            sortDirection: 'asc',
+            alertCount: 0
+        };
+
+        // Initialize Live tab data - SAMPLE DATA ONLY
+        function initializeLiveData() {
+            // TODO: Replace with real API calls to get profiles, categories, apps, and sessions
+            console.log('Initializing Live tab with sample data');
+            console.log('Live data profiles:', liveData.profiles);
+            
+            // Generate sample session data (100 rows with random dates)
+            liveData.sessions = generateSampleSessions();
+            liveData.alertCount = Math.floor(Math.random() * 5); // Sample alert count
+            
+            console.log('Generated sessions:', liveData.sessions.length);
+            
+            // Load all components
+            loadLiveProfiles();
+            loadTimeFilters();
+            loadCategoryFilters();
+            loadAppFilters();
+            loadSessionsTable();
+            updateAlertBadge();
+        }
+
+        // Generate sample session data - SAMPLE DATA ONLY (100 rows with random dates)
+        function generateSampleSessions() {
+            const sessions = [];
+            const devices = [
+                { name: 'iPhone 12', ip: '192.168.1.100', profile: 'profile_1' },
+                { name: 'MacBook Pro', ip: '192.168.1.101', profile: 'profile_2' },
+                { name: 'PlayStation 5', ip: '192.168.1.102', profile: 'profile_3' },
+                { name: 'iPad', ip: '192.168.1.103', profile: 'profile_1' },
+                { name: 'Samsung Galaxy', ip: '192.168.1.104', profile: 'profile_2' },
+                { name: 'Dell Laptop', ip: '192.168.1.105', profile: 'profile_3' },
+                { name: 'Xbox One', ip: '192.168.1.106', profile: 'profile_1' },
+                { name: 'Surface Pro', ip: '192.168.1.107', profile: 'profile_2' }
+            ];
+
+            const apps = liveData.apps;
+            const categories = liveData.categories;
+            
+            // Generate 100 sessions with random dates over the last 7 days
+            for (let i = 0; i < 100; i++) {
+                const device = devices[Math.floor(Math.random() * devices.length)];
+                const app = apps[Math.floor(Math.random() * apps.length)];
+                const category = categories.find(c => c.id === app.category);
+                
+                // Random time within last 7 days
+                const randomDays = Math.random() * 7;
+                const randomHours = Math.random() * 24;
+                const randomMinutes = Math.random() * 60;
+                const startTime = new Date(Date.now() - (randomDays * 24 * 60 * 60 * 1000) - (randomHours * 60 * 60 * 1000) - (randomMinutes * 60 * 1000));
+                
+                const duration = Math.floor(Math.random() * 120) + 1; // 1-120 minutes
+                const isActive = Math.random() > 0.4; // 60% chance of being active
+                const dataBytes = Math.floor(Math.random() * 100 * 1024 * 1024); // Up to 100MB
+                
+                sessions.push({
+                    id: `session_${i}`,
+                    device: device.name,
+                    deviceIp: device.ip,
+                    profile: device.profile,
+                    category: category.name,
+                    categoryId: category.id,
+                    app: app.name,
+                    appId: app.id,
+                    url: app.url,
+                    startTime: startTime,
+                    duration: duration,
+                    isActive: isActive,
+                    dataBytes: dataBytes,
+                    lastSeen: isActive ? new Date() : new Date(startTime.getTime() + duration * 60000),
+                    hasAlert: Math.random() > 0.85 // 15% chance of having an alert
+                });
+            }
+            
+            // Sort by most recent activity first
+            return sessions.sort((a, b) => b.lastSeen - a.lastSeen);
+        }
+
+        // Load Live tab data
+        function loadLiveData() {
+            initializeLiveData();
+        }
+
+        // Time filter functions
+        function loadTimeFilters() {
+            console.log('Loading time filters...');
+            const tabs = document.querySelectorAll('.time-tab');
+            console.log('Found time tabs:', tabs.length);
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    console.log('Time tab clicked:', tab.getAttribute('data-range'));
+                    // Remove active class from all tabs
+                    tabs.forEach(t => t.classList.remove('active'));
+                    // Add active class to clicked tab
+                    tab.classList.add('active');
+                    
+                    // Update filter
+                    liveData.filters.timeRange = tab.getAttribute('data-range');
+                    console.log('Updated time range to:', liveData.filters.timeRange);
+                    loadSessionsTable();
+                });
+            });
+        }
+
+        // Load live profiles (small cards)
+        function loadLiveProfiles() {
+            console.log('Loading live profiles...', liveData.profiles);
+            const container = document.getElementById('live-profiles-grid');
+            if (!container) {
+                console.error('live-profiles-grid container not found');
+                return;
+            }
+            container.innerHTML = '';
+            
+            liveData.profiles.forEach(profile => {
+                const card = document.createElement('div');
+                card.className = 'live-profile-card';
+                card.onclick = () => toggleLiveProfileFilter(profile.id);
+                
+                // Calculate time online for this profile
+                const profileSessions = liveData.sessions.filter(s => s.profile === profile.id);
+                const totalTime = profileSessions.reduce((sum, s) => sum + s.duration, 0);
+                const isOnline = profileSessions.some(s => s.isActive);
+                
+                card.innerHTML = `
+                    <div class="live-profile-avatar">${profile.name.charAt(0)}</div>
+                    <div class="live-profile-name">${profile.name}</div>
+                    <div class="live-profile-status">
+                        <div class="live-status-dot ${isOnline ? '' : 'offline'}"></div>
+                        ${isOnline ? 'Online' : 'Offline'}
+                    </div>
+                    <div class="live-profile-time">${formatDuration(totalTime)}</div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        // Toggle live profile filter
+        function toggleLiveProfileFilter(profileId) {
+            const index = liveData.filters.profiles.indexOf(profileId);
+            if (index > -1) {
+                liveData.filters.profiles.splice(index, 1);
+            } else {
+                liveData.filters.profiles.push(profileId);
+            }
+            
+            // Update UI
+            const cards = document.querySelectorAll('.live-profile-card');
+            cards.forEach(card => {
+                const profile = liveData.profiles.find(p => p.name === card.querySelector('.live-profile-name').textContent);
+                if (profile && liveData.filters.profiles.includes(profile.id)) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            });
+            
+            updateActiveFilters();
+            loadSessionsTable();
+        }
+
+        function toggleProfileFilter(profileId) {
+            const index = liveData.filters.profiles.indexOf(profileId);
+            if (index > -1) {
+                liveData.filters.profiles.splice(index, 1);
+            } else {
+                liveData.filters.profiles.push(profileId);
+            }
+            
+            // Update UI
+            const chips = document.querySelectorAll('#profile-filters .filter-chip');
+            chips.forEach(chip => {
+                const profile = liveData.profiles.find(p => p.name === chip.textContent);
+                if (profile && liveData.filters.profiles.includes(profile.id)) {
+                    chip.classList.add('selected');
+                } else {
+                    chip.classList.remove('selected');
+                }
+            });
+            
+            updateActiveFilters();
+            loadSessionsTable();
+        }
+
+        // Category filter functions
+        function loadCategoryFilters() {
+            const container = document.getElementById('category-filters');
+            container.innerHTML = '';
+            
+            liveData.categories.forEach(category => {
+                const chip = document.createElement('div');
+                chip.className = 'filter-chip';
+                chip.innerHTML = `
+                    ${category.name}
+                    <span class="count">${category.count}</span>
+                `;
+                chip.onclick = () => toggleCategoryFilter(category.id);
+                container.appendChild(chip);
+            });
+        }
+
+        function toggleCategoryFilter(categoryId) {
+            const index = liveData.filters.categories.indexOf(categoryId);
+            if (index > -1) {
+                liveData.filters.categories.splice(index, 1);
+            } else {
+                liveData.filters.categories.push(categoryId);
+            }
+            
+            // Update UI
+            const chips = document.querySelectorAll('#category-filters .filter-chip');
+            chips.forEach(chip => {
+                const category = liveData.categories.find(c => c.name === chip.textContent.split(' ')[0]);
+                if (category && liveData.filters.categories.includes(category.id)) {
+                    chip.classList.add('selected');
+                } else {
+                    chip.classList.remove('selected');
+                }
+            });
+            
+            // Update app filters based on selected categories
+            updateAppFilters();
+            updateActiveFilters();
+            loadSessionsTable();
+        }
+
+        // App filter functions
+        function loadAppFilters() {
+            updateAppFilters();
+        }
+
+        function updateAppFilters() {
+            const container = document.getElementById('app-filters');
+            container.innerHTML = '';
+            
+            // Filter apps based on selected categories
+            let filteredApps = liveData.apps;
+            if (liveData.filters.categories.length > 0) {
+                filteredApps = liveData.apps.filter(app => 
+                    liveData.filters.categories.includes(app.category)
+                );
+            }
+            
+            filteredApps.forEach(app => {
+                const chip = document.createElement('div');
+                chip.className = 'filter-chip';
+                chip.textContent = app.name;
+                chip.onclick = () => toggleAppFilter(app.id);
+                container.appendChild(chip);
+            });
+        }
+
+        function toggleAppFilter(appId) {
+            const index = liveData.filters.apps.indexOf(appId);
+            if (index > -1) {
+                liveData.filters.apps.splice(index, 1);
+            } else {
+                liveData.filters.apps.push(appId);
+            }
+            
+            // Update UI
+            const chips = document.querySelectorAll('#app-filters .filter-chip');
+            chips.forEach(chip => {
+                const app = liveData.apps.find(a => a.name === chip.textContent);
+                if (app && liveData.filters.apps.includes(app.id)) {
+                    chip.classList.add('selected');
+                } else {
+                    chip.classList.remove('selected');
+                }
+            });
+            
+            updateActiveFilters();
+            loadSessionsTable();
+        }
+
+        // Alert filter function
+        function toggleAlertFilter() {
+            liveData.filters.alerts = !liveData.filters.alerts;
+            const badge = document.getElementById('live-alert-badge');
+            if (liveData.filters.alerts) {
+                badge.classList.add('filtered');
+            } else {
+                badge.classList.remove('filtered');
+            }
+            updateActiveFilters();
+            loadSessionsTable();
+        }
+
+        // Update active filters display
+        function updateActiveFilters() {
+            const container = document.getElementById('active-filters');
+            const section = document.getElementById('active-filters-section');
+            container.innerHTML = '';
+            
+            liveData.activeFilters = [];
+            
+            // Add profile filters
+            liveData.filters.profiles.forEach(profileId => {
+                const profile = liveData.profiles.find(p => p.id === profileId);
+                if (profile) {
+                    liveData.activeFilters.push({
+                        type: 'profile',
+                        id: profileId,
+                        name: profile.name,
+                        remove: () => toggleLiveProfileFilter(profileId)
+                    });
+                }
+            });
+            
+            // Add category filters
+            liveData.filters.categories.forEach(categoryId => {
+                const category = liveData.categories.find(c => c.id === categoryId);
+                if (category) {
+                    liveData.activeFilters.push({
+                        type: 'category',
+                        id: categoryId,
+                        name: category.name,
+                        remove: () => toggleCategoryFilter(categoryId)
+                    });
+                }
+            });
+            
+            // Add app filters
+            liveData.filters.apps.forEach(appId => {
+                const app = liveData.apps.find(a => a.id === appId);
+                if (app) {
+                    liveData.activeFilters.push({
+                        type: 'app',
+                        id: appId,
+                        name: app.name,
+                        remove: () => toggleAppFilter(appId)
+                    });
+                }
+            });
+            
+            // Note: Alerts are not shown in active filters list, but are applied as filter
+            
+            // Render active filters
+            liveData.activeFilters.forEach(filter => {
+                const filterDiv = document.createElement('div');
+                filterDiv.className = 'active-filter';
+                filterDiv.innerHTML = `
+                    ${filter.name}
+                    <span class="remove" onclick="removeFilter('${filter.type}', '${filter.id}')">×</span>
+                `;
+                container.appendChild(filterDiv);
+            });
+            
+            // Show/hide section based on active filters
+            section.style.display = liveData.activeFilters.length > 0 ? 'block' : 'none';
+        }
+
+        // Remove filter function for X button
+        function removeFilter(type, id) {
+            switch (type) {
+                case 'profile':
+                    toggleLiveProfileFilter(id);
+                    break;
+                case 'category':
+                    toggleCategoryFilter(id);
+                    break;
+                case 'app':
+                    toggleAppFilter(id);
+                    break;
+            }
+        }
+
+        // Update alert badge
+        function updateAlertBadge() {
+            const badge = document.getElementById('live-alert-badge');
+            const count = document.querySelector('.alert-count');
+            count.textContent = liveData.alertCount;
+        }
+
+        // Sessions table functions
+        function loadSessionsTable() {
+            console.log('Loading sessions table...');
+            const tbody = document.getElementById('traffic-tbody');
+            if (!tbody) {
+                console.error('traffic-tbody not found');
+                return;
+            }
+            tbody.innerHTML = '';
+            
+            // Apply time range filter
+            let filteredSessions = liveData.sessions.filter(session => {
+                const now = new Date();
+                const sessionTime = session.lastSeen;
+                const timeDiff = now - sessionTime;
+                
+                switch (liveData.filters.timeRange) {
+                    case '15min':
+                        return timeDiff <= 15 * 60 * 1000;
+                    case '1hour':
+                        return timeDiff <= 60 * 60 * 1000;
+                    case '2hours':
+                        return timeDiff <= 2 * 60 * 60 * 1000;
+                    case 'daily':
+                        return timeDiff <= 24 * 60 * 60 * 1000;
+                    default:
+                        return true;
+                }
+            });
+            
+            console.log('Filtered sessions:', filteredSessions.length);
+            
+            // Apply other filters
+            filteredSessions = filteredSessions.filter(session => {
+                // Profile filter
+                if (liveData.filters.profiles.length > 0 && !liveData.filters.profiles.includes(session.profile)) {
+                    return false;
+                }
+                
+                // Category filter
+                if (liveData.filters.categories.length > 0 && !liveData.filters.categories.includes(session.categoryId)) {
+                    return false;
+                }
+                
+                // App filter
+                if (liveData.filters.apps.length > 0 && !liveData.filters.apps.includes(session.appId)) {
+                    return false;
+                }
+                
+                // Alert filter
+                if (liveData.filters.alerts && !session.hasAlert) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            // Apply sorting
+            if (liveData.sortColumn) {
+                filteredSessions.sort((a, b) => {
+                    let aVal = a[liveData.sortColumn];
+                    let bVal = b[liveData.sortColumn];
+                    
+                    if (liveData.sortColumn === 'lastSeen' || liveData.sortColumn === 'startTime') {
+                        aVal = new Date(aVal);
+                        bVal = new Date(bVal);
+                    }
+                    
+                    if (liveData.sortDirection === 'asc') {
+                        return aVal > bVal ? 1 : -1;
+                    } else {
+                        return aVal < bVal ? 1 : -1;
+                    }
+                });
+            } else {
+                // Default sort: active sessions first, then by last seen
+                filteredSessions.sort((a, b) => {
+                    if (a.isActive !== b.isActive) {
+                        return b.isActive - a.isActive; // Active first
+                    }
+                    return b.lastSeen - a.lastSeen; // Most recent first
+                });
+            }
+            
+            // Render rows
+            filteredSessions.forEach(session => {
+                const row = createSessionRow(session);
+                tbody.appendChild(row);
+            });
+        }
+
+        function createSessionRow(session) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="clickable-cell" onclick="filterByValue('device', '${session.device}')">
+                    <div class="device-info">
+                        <div class="device-name">${session.device}</div>
+                        <div class="device-ip">${session.deviceIp}</div>
+                    </div>
+                </td>
+                <td class="clickable-cell" onclick="filterByValue('category', '${session.categoryId}')">
+                    <span class="category-badge category-${session.categoryId}">${session.category}</span>
+                </td>
+                <td class="clickable-cell" onclick="filterByValue('app', '${session.appId}')">
+                    <div class="accessing-info">
+                        <div class="accessing-app">${session.app}</div>
+                        <div class="accessing-time">${formatTime(session.startTime)}</div>
+                    </div>
+                </td>
+                <td class="clickable-cell" onclick="filterByValue('duration', '${session.duration}')">
+                    <div class="duration-info">${formatDuration(session.duration)}</div>
+                </td>
+                <td class="clickable-cell" onclick="filterByValue('data', '${session.dataBytes}')">
+                    <div class="data-info">${formatDataBytes(session.dataBytes)}</div>
+                </td>
+                <td class="clickable-cell" onclick="filterByValue('status', '${session.isActive}')">
+                    <div class="session-status">
+                        <div class="status-dot ${session.isActive ? 'status-active' : 'status-inactive'}"></div>
+                        ${session.isActive ? 'Active' : 'Inactive'}
+                    </div>
+                </td>
+            `;
+            return row;
+        }
+
+        function formatDataBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            const value = parseFloat((bytes / Math.pow(k, i)).toFixed(1));
+            
+            // Special formatting for KB and MB thresholds
+            if (i === 1 && value < 0.1) return '< 0.1 KB';
+            if (i === 2 && value >= 1024) return '1.0 GB';
+            
+            return value + ' ' + sizes[i];
+        }
+
+        function formatDuration(minutes) {
+            if (minutes < 60) {
+                return `${minutes}m`;
+            }
+            const hours = Math.floor(minutes / 60);
+            const remainingMinutes = minutes % 60;
+            if (remainingMinutes === 0) {
+                return `${hours}h`;
+            }
+            return `${hours}h ${remainingMinutes}m`;
+        }
+
+        function formatTime(timestamp) {
+            const now = new Date();
+            const diff = now - timestamp;
+            const minutes = Math.floor(diff / 60000);
+            
+            if (minutes < 1) return 'Just now';
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours}h ago`;
+            return timestamp.toLocaleDateString();
+        }
+
+        // Filter by cell value - adds filter when clicking on table cells
+        function filterByValue(column, value) {
+            console.log(`Adding filter: ${column} = ${value}`);
+            
+            // Add appropriate filter based on column
+            switch (column) {
+                case 'device':
+                    // Find profile by device name and add to profile filter
+                    const session = liveData.sessions.find(s => s.device === value);
+                    if (session && !liveData.filters.profiles.includes(session.profile)) {
+                        toggleProfileFilter(session.profile);
+                    }
+                    break;
+                case 'category':
+                    if (!liveData.filters.categories.includes(value)) {
+                        toggleCategoryFilter(value);
+                    }
+                    break;
+                case 'app':
+                    if (!liveData.filters.apps.includes(value)) {
+                        toggleAppFilter(value);
+                    }
+                    break;
+                case 'status':
+                    if (value === 'true' && !liveData.filters.alerts) {
+                        toggleAlertFilter();
+                    }
+                    break;
+            }
+        }
+
+        // Table sorting with 3-state: unsorted -> asc -> desc -> unsorted
+        function sortTable(column) {
+            if (liveData.sortColumn === column) {
+                if (liveData.sortDirection === 'asc') {
+                    liveData.sortDirection = 'desc';
+                } else if (liveData.sortDirection === 'desc') {
+                    // Third click: unsorted (reset to default)
+                    liveData.sortColumn = null;
+                    liveData.sortDirection = 'asc';
+                }
+            } else {
+                // First click: ascending
+                liveData.sortColumn = column;
+                liveData.sortDirection = 'asc';
+            }
+            
+            // Update sort indicators
+            document.querySelectorAll('.sort-icon').forEach(icon => {
+                icon.textContent = '↕';
+            });
+            
+            if (liveData.sortColumn) {
+                const header = document.querySelector(`[data-sort="${liveData.sortColumn}"]`);
+                if (header) {
+                    const icon = header.querySelector('.sort-icon');
+                    icon.textContent = liveData.sortDirection === 'asc' ? '↑' : '↓';
+                }
+            }
+            
+            loadSessionsTable();
+        }
+
+        // Add click handlers to sortable headers
+        function initializeTableSorting() {
+            document.querySelectorAll('.sortable').forEach(header => {
+                header.addEventListener('click', () => {
+                    const column = header.getAttribute('data-sort');
+                    sortTable(column);
+                });
+            });
+        }
+
+        // Handle F5 refresh to maintain current section
+        function handleRefresh() {
+            const currentSection = localStorage.getItem('currentSection') || 'home';
+            if (currentSection === 'live') {
+                loadLiveData();
+            } else if (currentSection === 'home') {
+                loadProfiles();
+            }
+        }
+
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
             loadProfiles();
             startAutoRefresh();
+            initializeTableSorting();
+            
+            // Handle page refresh
+            window.addEventListener('beforeunload', function() {
+                localStorage.setItem('currentSection', currentSection);
+            });
+            
+            // Handle page load after refresh
+            window.addEventListener('load', handleRefresh);
         });
 
         // Update time every minute
@@ -1412,6 +2746,9 @@
             
             currentSection = section;
             
+            // Save current section for refresh handling
+            localStorage.setItem('currentSection', section);
+            
             // Close sidebar on mobile after selection
             if (window.innerWidth <= 768) {
                 closeSidebar();
@@ -1461,13 +2798,43 @@
                         const profileCard = createProfileCard(profile);
                         profilesGrid.appendChild(profileCard);
                     });
+                } else {
+                    // Show sample data if no profiles exist
+                    const sampleProfiles = [
+                        { id: 1, name: 'John Doe', picture: null, device_count: 2 },
+                        { id: 2, name: 'Jane Smith', picture: null, device_count: 1 },
+                        { id: 3, name: 'Kids', picture: null, device_count: 3 }
+                    ];
+                    
+                    sampleProfiles.forEach(profile => {
+                        const profileCard = createProfileCard(profile);
+                        profilesGrid.appendChild(profileCard);
+                    });
                 }
                 
                 // Update button visibility
                 updateAddButtonVisibility();
                 
+                // Update profile card badges
+                updateProfileCardBadges();
+                
             } catch (error) {
                 console.error('Error loading profiles:', error);
+                
+                // Show sample data on error
+                const profilesGrid = document.getElementById('profiles-grid');
+                const sampleProfiles = [
+                    { id: 1, name: 'John Doe', picture: null, device_count: 2 },
+                    { id: 2, name: 'Jane Smith', picture: null, device_count: 1 },
+                    { id: 3, name: 'Kids', picture: null, device_count: 3 }
+                ];
+                
+                profilesGrid.innerHTML = '';
+                sampleProfiles.forEach(profile => {
+                    const profileCard = createProfileCard(profile);
+                    profilesGrid.appendChild(profileCard);
+                });
+                
                 // Update button visibility on error
                 updateAddButtonVisibility();
             }
@@ -1562,6 +2929,7 @@
         }
 
         function showProfileDetail(profile) {
+            console.log('Showing profile detail for:', profile);
             document.getElementById('home-section').classList.remove('active');
             document.getElementById('profile-detail-section').classList.add('active');
             
@@ -1720,8 +3088,14 @@
 
         // Profile data loading functions
         function loadProfileDevices(profile) {
+            console.log('Loading profile devices for:', profile);
             const devicesGrid = document.getElementById('devices-grid');
             const devicesCount = document.getElementById('devices-count');
+            
+            if (!devicesGrid || !devicesCount) {
+                console.error('Required elements not found:', { devicesGrid, devicesCount });
+                return;
+            }
             
             // Mock device data - in real implementation, this would come from API
             const devices = [
@@ -1778,8 +3152,14 @@
         }
 
         function loadProfileActivity(profile) {
+            console.log('Loading profile activity for:', profile);
             const categoriesContainer = document.getElementById('app-categories');
             const activeTotal = document.getElementById('active-total');
+            
+            if (!categoriesContainer || !activeTotal) {
+                console.error('Required elements not found:', { categoriesContainer, activeTotal });
+                return;
+            }
             
             // Mock app category data with timeline sessions
             const categories = [
@@ -2088,9 +3468,34 @@
             if (unseenAlerts.length > 0) {
                 alertsBadge.textContent = unseenAlerts.length;
                 alertsBadge.style.display = 'block';
-                } else {
+            } else {
+                alertsBadge.textContent = '0';
                 alertsBadge.style.display = 'none';
             }
+            
+            // Update profile card badges on home screen
+            updateProfileCardBadges();
+        }
+
+        function updateProfileCardBadges() {
+            // Get current profile's alert count
+            const alertsList = document.getElementById('alerts-list');
+            const unseenAlerts = alertsList ? alertsList.querySelectorAll('.alert-item:not(.seen)') : [];
+            const alertCount = unseenAlerts.length;
+            
+            // Update all profile card badges
+            const profileCards = document.querySelectorAll('.profile-card');
+            profileCards.forEach(card => {
+                const badge = card.querySelector('.profile-alert-badge');
+                if (badge) {
+                    if (alertCount > 0) {
+                        badge.textContent = alertCount;
+                        badge.style.display = 'block';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            });
         }
 
 
@@ -2102,6 +3507,9 @@
             
             alertsList.innerHTML = '<div style="text-align: center; color: var(--gray); padding: 20px;">No alerts</div>';
             alertsBadge.style.display = 'none';
+            
+            // Update profile card badges
+            updateProfileCardBadges();
         }
 
         // App timeline functions
@@ -2121,9 +3529,7 @@
 
 
         // Data loading functions (placeholder implementations)
-        async function loadLiveData() {
-            console.log('Loading live data...');
-        }
+        // This function is overridden by the Live tab specific loadLiveData above
 
         async function loadProfilesData() {
             console.log('Loading profiles data...');
@@ -2153,23 +3559,23 @@
             const profileDetail = document.getElementById('profile-detail-section');
             
             // Hide add buttons when modal is open or on profile detail screen
-            const shouldHide = modal.classList.contains('active') || 
-                              profileDetail.classList.contains('active');
+            const shouldHide = modal && modal.classList.contains('active') || 
+                              profileDetail && profileDetail.classList.contains('active');
             
             if (shouldHide) {
-                addContainer.style.display = 'none';
-                bottomButton.style.display = 'none';
+                if (addContainer) addContainer.style.display = 'none';
+                if (bottomButton) bottomButton.style.display = 'none';
             } else {
                 // Show appropriate button based on whether profiles exist
                 const profilesGrid = document.getElementById('profiles-grid');
-                const hasProfiles = profilesGrid.children.length > 0;
+                const hasProfiles = profilesGrid && profilesGrid.children.length > 0;
                 
                 if (hasProfiles) {
-                    addContainer.style.display = 'none';
-                    bottomButton.style.display = 'block';
+                    if (addContainer) addContainer.style.display = 'none';
+                    if (bottomButton) bottomButton.style.display = 'block';
                 } else {
-                    addContainer.style.display = 'flex';
-                    bottomButton.style.display = 'none';
+                    if (addContainer) addContainer.style.display = 'flex';
+                    if (bottomButton) bottomButton.style.display = 'none';
                 }
             }
         }
