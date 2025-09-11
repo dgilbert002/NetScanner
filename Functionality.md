@@ -647,4 +647,197 @@ function updateAddButtonVisibility() {
 
 ---
 
+## 12. DEVICES SCREEN FUNCTIONALITY
+
+### 12.1 Device Discovery & Management
+**Purpose**: Comprehensive network device management with detailed information gathering
+**Location**: Devices tab in main navigation
+
+#### 12.1.1 Device Table Structure
+**Columns**:
+- **Device Name**: Friendly name or hostname
+- **IP Address**: Current IP address (monospace font)
+- **MAC Address**: Hardware MAC address (monospace font)
+- **Manufacturer**: Device manufacturer (Apple, Samsung, etc.)
+- **Model**: Specific device model
+- **Status**: Online/Offline with visual indicator
+- **Last Seen**: Time since last activity
+- **Actions**: Details button for each device
+
+#### 12.1.2 Device Information Gathering
+**Data Sources**:
+- **Network Scanning**: ARP table, ping sweeps
+- **MAC Address Lookup**: OUI database for manufacturer identification
+- **Device Fingerprinting**: Port scanning, service detection
+- **DNS Resolution**: Hostname resolution for IP addresses
+- **SNMP Queries**: For managed network devices
+
+**Sample Device Data**:
+```javascript
+{
+    id: 1,
+    name: 'iPhone 12 Pro',
+    ip: '192.168.1.100',
+    mac: '00:1B:44:11:3A:B7',
+    manufacturer: 'Apple',
+    model: 'iPhone 12 Pro',
+    status: 'online',
+    lastSeen: new Date(Date.now() - 5 * 60 * 1000),
+    profile: 'John Doe'
+}
+```
+
+### 12.2 Device Table Functionality
+
+#### 12.2.1 Sorting System
+**Implementation**: 3-state sorting (unsorted → asc → desc → unsorted)
+**Sortable Columns**: All columns except Actions
+**Visual Indicators**: ↑ for ascending, ↓ for descending
+
+**Sort Logic**:
+```javascript
+function sortDevicesTable(column) {
+    if (devicesData.sortColumn === column) {
+        devicesData.sortDirection = devicesData.sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        devicesData.sortColumn = column;
+        devicesData.sortDirection = 'asc';
+    }
+    // Sort and update indicators
+}
+```
+
+#### 12.2.2 Device Status Indicators
+**Online Status**: Green dot with "Online" text
+**Offline Status**: Gray dot with "Offline" text
+**Last Seen Formatting**: "Just now", "5m ago", "2h ago", "1d ago"
+
+### 12.3 Device Details Modal
+
+#### 12.3.1 Device Information Section
+**Layout**: Grid of information cards
+**Information Displayed**:
+- Device Name
+- IP Address
+- MAC Address
+- Manufacturer
+- Model
+- Status
+- Last Seen
+- Assigned Profile
+
+#### 12.3.2 Device Traffic Sessions Table
+**Purpose**: Show traffic sessions for the selected device
+**Table Structure**: Same as Live tab traffic table
+**Columns**: Device, Category, Accessing, Duration, Data, Status
+**Sorting**: Same 3-state sorting as Live tab
+**Cell Clicking**: Filter by clicked value (same behavior as Live tab)
+
+### 12.4 Cell Clicking Behavior (Fixed)
+
+#### 12.4.1 Live Tab Cell Clicking
+**Previous Behavior**: Clicking device cell filtered by profile owner
+**New Behavior**: Clicking device cell filters by device name directly
+**Implementation**:
+```javascript
+case 'device':
+    // Filter by device name directly, not by profile
+    if (!liveData.filters.devices.includes(value)) {
+        liveData.filters.devices.push(value);
+        updateActiveFilters();
+        loadSessionsTable();
+    }
+    break;
+```
+
+#### 12.4.2 Devices Tab Cell Clicking
+**Behavior**: Clicking any cell adds that value as a filter
+**Filter Types**:
+- **Device**: Filter by device name
+- **Category**: Filter by category ID
+- **App**: Filter by app ID
+- **Duration**: Filter by duration value
+- **Data**: Filter by data size
+- **Status**: Filter by active/inactive status
+
+### 12.5 Filter Management System
+
+#### 12.5.1 Active Filters Display
+**Location**: Below time range filters in Live tab
+**Filter Types Supported**:
+- Profile filters
+- Category filters
+- App filters
+- Device filters (new)
+- Duration filters (new)
+- Data range filters (new)
+- Status filters (new)
+
+#### 12.5.2 Filter Removal
+**Method**: Click "X" button on active filter
+**Functions**:
+- `removeDeviceFilter(deviceName)`
+- `removeDurationFilter(duration)`
+- `removeDataRangeFilter(dataRange)`
+- `removeStatusFilter(status)`
+
+### 12.6 Network Scanning Integration
+
+#### 12.6.1 Refresh Devices
+**Function**: `refreshDevices()`
+**Action**: Reload device list from current data
+**UI**: Refresh button with icon
+
+#### 12.6.2 Scan Network
+**Function**: `scanNetwork()`
+**Action**: Trigger new network scan for devices
+**UI**: Scan button with icon
+**Future Integration**: Connect to backend scanning service
+
+### 12.7 Data Flow Architecture
+
+#### 12.7.1 Device Data Loading
+1. **Initialize**: `initializeDevices()` called when Devices tab is shown
+2. **Load Data**: `loadDevices()` generates sample data
+3. **Render Table**: `renderDevicesTable()` populates table
+4. **Setup Sorting**: Event listeners attached to column headers
+
+#### 12.7.2 Device Details Flow
+1. **Click Details**: `showDeviceDetails(deviceId)` called
+2. **Load Info**: `loadDeviceInfo(device)` populates device information
+3. **Load Traffic**: `loadDeviceTrafficSessions(deviceId)` gets traffic data
+4. **Render Tables**: Both info grid and traffic table rendered
+5. **Show Modal**: Modal displayed with all information
+
+### 12.8 Error Handling & Debugging
+
+#### 12.8.1 Console Logging
+**Functions Logged**:
+- `initializeDevices()`: "Initializing devices section..."
+- `loadDevices()`: "Loading devices..."
+- `renderDevicesTable()`: "Rendering devices table..."
+- `showDeviceDetails()`: "Showing device details for device ID: X"
+- `sortDevicesTable()`: "Sorting devices by: X"
+
+#### 12.8.2 Error Prevention
+**Null Checks**: All DOM element access protected
+**Fallback Data**: Sample data provided for testing
+**Graceful Degradation**: Functions continue if elements missing
+
+### 12.9 Future Enhancements
+
+#### 12.9.1 Real Network Integration
+**ARP Table Scanning**: Read system ARP table
+**Ping Sweeps**: Scan IP ranges for active devices
+**MAC Address Lookup**: OUI database integration
+**Device Fingerprinting**: Port scanning, service detection
+
+#### 12.9.2 Advanced Device Management
+**Device Renaming**: Edit friendly names
+**Profile Assignment**: Assign devices to profiles
+**Device Grouping**: Group devices by type/location
+**Historical Data**: Track device connection history
+
+---
+
 This documentation serves as the foundation for integrating live network monitoring data into the existing UI framework. Each function and interaction is designed to work seamlessly with real-time data while maintaining the current user experience.

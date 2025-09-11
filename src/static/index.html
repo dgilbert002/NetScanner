@@ -1417,6 +1417,336 @@
             font-weight: 600;
         }
 
+        /* Devices Section Styles */
+        .devices-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 0 20px;
+        }
+
+        .devices-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .refresh-button, .scan-button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: white;
+            color: var(--gray);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .refresh-button:hover, .scan-button:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .devices-table-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+
+        .devices-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .devices-table th {
+            background: var(--light);
+            padding: 16px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--gray);
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .devices-table th.sortable:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .devices-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        .devices-table tbody tr:hover {
+            background: rgba(102, 126, 234, 0.02);
+        }
+
+        .device-info .device-name { font-weight: 600; color: var(--dark); }
+        .device-info .device-ip { font-family: 'Courier New', monospace; color: var(--gray); }
+        .device-info .device-mac { font-family: 'Courier New', monospace; color: var(--gray); font-size: 0.9rem; }
+        .session-status { display: flex; align-items: center; gap: 8px; }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-online {
+            background: var(--success);
+        }
+
+        .status-offline {
+            background: var(--gray);
+        }
+
+        .device-actions-cell {
+            text-align: center;
+        }
+
+        .details-button {
+            padding: 6px 12px;
+            border: 1px solid var(--primary);
+            border-radius: 6px;
+            background: white;
+            color: var(--primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+
+        .details-button:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Device Details Modal */
+        .device-info-section {
+            margin-bottom: 30px;
+        }
+
+        .device-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .device-info-item {
+            padding: 15px;
+            background: var(--light);
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .device-info-label {
+            font-size: 0.8rem;
+            color: var(--gray);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .device-info-value {
+            font-size: 1rem;
+            color: var(--dark);
+            font-weight: 600;
+        }
+
+        .device-traffic-section h4 {
+            margin-bottom: 15px;
+            color: var(--dark);
+        }
+
+        .device-traffic-table-container {
+            background: white;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        /* Device Modal Styles */
+        .device-modal-content {
+            max-width: 90vw;
+            width: 1200px;
+        }
+
+        .device-name-edit {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .device-name-edit input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .device-name-edit input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .clear-name-btn {
+            padding: 4px 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: white;
+            color: var(--gray);
+            cursor: pointer;
+            font-size: 1.2rem;
+            line-height: 1;
+            transition: all 0.3s ease;
+        }
+
+        .clear-name-btn:hover {
+            background: var(--danger);
+            color: white;
+            border-color: var(--danger);
+        }
+
+        .device-time-filters {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: var(--light);
+            border-radius: 8px;
+        }
+
+        .device-time-filters .time-filter-tabs {
+            display: flex;
+            gap: 5px;
+        }
+
+        .device-time-filters .time-tab {
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: white;
+            color: var(--gray);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .device-time-filters .time-tab.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .device-time-filters .time-tab:hover:not(.active) {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .device-alert-section {
+            display: flex;
+            align-items: center;
+        }
+
+        .device-alert-section .alert-badge {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: white;
+            color: var(--gray);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .device-alert-section .alert-badge.active {
+            background: var(--warning);
+            color: white;
+            border-color: var(--warning);
+        }
+
+        .device-alert-section .alert-badge:hover:not(.active) {
+            border-color: var(--warning);
+            color: var(--warning);
+        }
+
+        .device-traffic-section h4 {
+            margin: 0 0 15px 0;
+            color: var(--dark);
+        }
+
+        /* Device Expander Styles */
+        .device-expander {
+            background: var(--light);
+            border-radius: 8px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .device-expander-content {
+            padding: 20px;
+        }
+
+        .device-name-edit-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .device-name-edit-section .device-name-edit {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .device-name-edit-section .device-name-edit input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .device-name-edit-section .device-name-edit input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .device-name-edit-section .clear-name-btn {
+            padding: 4px 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: white;
+            color: var(--gray);
+            cursor: pointer;
+            font-size: 1.2rem;
+            line-height: 1;
+            transition: all 0.3s ease;
+        }
+
+        .device-name-edit-section .clear-name-btn:hover {
+            background: var(--danger);
+            color: white;
+            border-color: var(--danger);
+        }
+
         @media (max-width: 768px) {
             .filter-row {
                 flex-direction: column;
@@ -1624,7 +1954,7 @@
 
         .file-upload-label {
             display: flex;
-            flex-direction: column;
+                flex-direction: column;
             align-items: center;
             padding: 20px;
             border: 2px dashed var(--border);
@@ -1651,7 +1981,7 @@
             border-radius: 50%;
             display: flex;
             align-items: center;
-            justify-content: center;
+                justify-content: center;
             margin-bottom: 12px;
             font-size: 24px;
             color: var(--gray);
@@ -1879,9 +2209,9 @@
                     <h3>Family Members</h3>
                     <div class="live-profiles-grid" id="live-profiles-grid">
                         <!-- Profile cards will be populated here -->
-                    </div>
                 </div>
-                
+            </div>
+
                 <!-- Category and App Filters -->
                 <div class="live-filters">
                     <div class="filter-section">
@@ -1898,10 +2228,10 @@
                                     <!-- App filters will be populated here -->
                                 </div>
                             </div>
-                        </div>
-                    </div>
                 </div>
-                
+            </div>
+        </div>
+
                 <!-- Time Filter and Active Filters -->
                 <div class="live-traffic-section">
                     <div class="traffic-header">
@@ -1927,9 +2257,9 @@
                                 <div class="active-filters" id="active-filters">
                                     <!-- Active filters will be displayed here -->
                                 </div>
-                            </div>
-                        </div>
-                    </div>
+            </div>
+        </div>
+    </div>
                     
                     <div class="traffic-table-container">
                         <table class="traffic-table" id="traffic-table">
@@ -1959,11 +2289,104 @@
             </div>
 
             <div id="devices-section" class="tab-content">
-                <div style="text-align: center; padding: 40px; color: var(--gray);">
-                    <h2>Device Management</h2>
-                    <p>View and manage network devices here</p>
+                <div class="devices-header">
+                    <h2>Network Devices</h2>
+                    <div class="devices-controls">
+                        <button class="refresh-button" onclick="refreshDevices()">
+                            <span class="refresh-icon">🔄</span>
+                            Refresh
+                        </button>
+                        <button class="scan-button" onclick="scanNetwork()">
+                            <span class="scan-icon">🔍</span>
+                            Scan Network
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Devices Table -->
+                <div class="devices-table-container">
+                    <table class="traffic-table" id="devices-table">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-sort="name">Device <span class="sort-icon">↕</span></th>
+                                <th class="sortable" data-sort="manufacturer">Manufacturer <span class="sort-icon">↕</span></th>
+                                <th class="sortable" data-sort="status">Status <span class="sort-icon">↕</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="devices-table-body">
+                            <!-- Devices will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Device Expander (hidden by default) -->
+                <div id="device-expander" class="device-expander" style="display: none;">
+                    <div class="device-expander-content">
+                        <!-- Device Name Editing -->
+                        <div class="device-name-edit-section">
+                            <div class="device-name-edit">
+                                <input type="text" id="device-friendly-name" placeholder="Enter friendly name..." 
+                                       onblur="saveDeviceName()" onkeypress="handleDeviceNameKeypress(event)">
+                                <button class="clear-name-btn" onclick="clearDeviceName()" title="Clear name">×</button>
+                            </div>
+                        </div>
+
+                        <!-- Time Range Filters -->
+                        <div class="device-time-filters">
+                            <div class="time-filter-tabs">
+                                <button class="time-tab active" onclick="setDeviceTimeRange('15min')">Last 15 min</button>
+                                <button class="time-tab" onclick="setDeviceTimeRange('1hour')">1 hour</button>
+                                <button class="time-tab" onclick="setDeviceTimeRange('2hours')">2 hours</button>
+                                <button class="time-tab" onclick="setDeviceTimeRange('daily')">Today</button>
+                            </div>
+                            <div class="device-alert-section">
+                                <button class="alert-badge" id="device-alert-badge" onclick="toggleDeviceAlertFilter()">
+                                    <span class="alert-icon">⚠️</span>
+                                    <span class="alert-count">0</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Live Network Traffic Table -->
+                        <div class="device-traffic-section">
+                            <div class="traffic-header">
+                                <div class="traffic-title-section">
+                                    <h4>Live Network Traffic</h4>
+                                </div>
+                            </div>
+                            <div class="device-traffic-table-container">
+                                <table class="traffic-table" id="device-traffic-table">
+                                    <thead>
+                                        <tr>
+                                            <th onclick="sortDeviceTrafficTable('device')" class="sortable">
+                                                Device <span class="sort-indicator"></span>
+                                            </th>
+                                            <th onclick="sortDeviceTrafficTable('category')" class="sortable">
+                                                Category <span class="sort-indicator"></span>
+                                            </th>
+                                            <th onclick="sortDeviceTrafficTable('app')" class="sortable">
+                                                Accessing <span class="sort-indicator"></span>
+                                            </th>
+                                            <th onclick="sortDeviceTrafficTable('duration')" class="sortable">
+                                                Duration <span class="sort-indicator"></span>
+                                            </th>
+                                            <th onclick="sortDeviceTrafficTable('data')" class="sortable">
+                                                Data <span class="sort-indicator"></span>
+                                            </th>
+                                            <th onclick="sortDeviceTrafficTable('status')" class="sortable">
+                                                Status <span class="sort-indicator"></span>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="device-traffic-table-body">
+                                        <!-- Traffic sessions will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
 
             <div id="hostnames-section" class="tab-content">
                 <div style="text-align: center; padding: 40px; color: var(--gray);">
@@ -2392,6 +2815,46 @@
                 }
             });
             
+            // Add device filters
+            liveData.filters.devices.forEach(deviceName => {
+                liveData.activeFilters.push({
+                    type: 'device',
+                    id: deviceName,
+                    name: deviceName,
+                    remove: () => removeDeviceFilter(deviceName)
+                });
+            });
+            
+            // Add duration filters
+            liveData.filters.durations.forEach(duration => {
+                liveData.activeFilters.push({
+                    type: 'duration',
+                    id: duration,
+                    name: formatDuration(duration),
+                    remove: () => removeDurationFilter(duration)
+                });
+            });
+            
+            // Add data range filters
+            liveData.filters.dataRanges.forEach(dataRange => {
+                liveData.activeFilters.push({
+                    type: 'data',
+                    id: dataRange,
+                    name: formatDataBytes(dataRange),
+                    remove: () => removeDataRangeFilter(dataRange)
+                });
+            });
+            
+            // Add status filters
+            liveData.filters.statuses.forEach(status => {
+                liveData.activeFilters.push({
+                    type: 'status',
+                    id: status,
+                    name: status ? 'Active' : 'Inactive',
+                    remove: () => removeStatusFilter(status)
+                });
+            });
+            
             // Note: Alerts are not shown in active filters list, but are applied as filter
             
             // Render active filters
@@ -2421,6 +2884,58 @@
                 case 'app':
                     toggleAppFilter(id);
                     break;
+                case 'device':
+                    removeDeviceFilter(id);
+                    break;
+                case 'duration':
+                    removeDurationFilter(id);
+                    break;
+                case 'data':
+                    removeDataRangeFilter(id);
+                    break;
+                case 'status':
+                    removeStatusFilter(id);
+                    break;
+            }
+        }
+
+        // Remove device filter
+        function removeDeviceFilter(deviceName) {
+            const index = liveData.filters.devices.indexOf(deviceName);
+            if (index > -1) {
+                liveData.filters.devices.splice(index, 1);
+                updateActiveFilters();
+                loadSessionsTable();
+            }
+        }
+
+        // Remove duration filter
+        function removeDurationFilter(duration) {
+            const index = liveData.filters.durations.indexOf(duration);
+            if (index > -1) {
+                liveData.filters.durations.splice(index, 1);
+                updateActiveFilters();
+                loadSessionsTable();
+            }
+        }
+
+        // Remove data range filter
+        function removeDataRangeFilter(dataRange) {
+            const index = liveData.filters.dataRanges.indexOf(dataRange);
+            if (index > -1) {
+                liveData.filters.dataRanges.splice(index, 1);
+                updateActiveFilters();
+                loadSessionsTable();
+            }
+        }
+
+        // Remove status filter
+        function removeStatusFilter(status) {
+            const index = liveData.filters.statuses.indexOf(status);
+            if (index > -1) {
+                liveData.filters.statuses.splice(index, 1);
+                updateActiveFilters();
+                loadSessionsTable();
             }
         }
 
@@ -2485,6 +3000,26 @@
                     return false;
                 }
                 
+                // Device filter (by IP address)
+                if (liveData.filters.devices.length > 0 && !liveData.filters.devices.includes(session.deviceIp)) {
+                    return false;
+                }
+                
+                // Duration filter
+                if (liveData.filters.durations.length > 0 && !liveData.filters.durations.includes(session.duration)) {
+                    return false;
+                }
+                
+                // Data range filter
+                if (liveData.filters.dataRanges.length > 0 && !liveData.filters.dataRanges.includes(session.dataBytes)) {
+                    return false;
+                }
+                
+                // Status filter
+                if (liveData.filters.statuses.length > 0 && !liveData.filters.statuses.includes(session.isActive)) {
+                    return false;
+                }
+                
                 return true;
             });
             
@@ -2525,7 +3060,7 @@
         function createSessionRow(session) {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td class="clickable-cell" onclick="filterByValue('device', '${session.device}')">
+                <td class="clickable-cell" onclick="filterByValue('device', '${session.deviceIp}')">
                     <div class="device-info">
                         <div class="device-name">${session.device}</div>
                         <div class="device-ip">${session.deviceIp}</div>
@@ -2540,10 +3075,10 @@
                         <div class="accessing-time">${formatTime(session.startTime)}</div>
                     </div>
                 </td>
-                <td class="clickable-cell" onclick="filterByValue('duration', '${session.duration}')">
+                <td>
                     <div class="duration-info">${formatDuration(session.duration)}</div>
                 </td>
-                <td class="clickable-cell" onclick="filterByValue('data', '${session.dataBytes}')">
+                <td>
                     <div class="data-info">${formatDataBytes(session.dataBytes)}</div>
                 </td>
                 <td class="clickable-cell" onclick="filterByValue('status', '${session.isActive}')">
@@ -2766,7 +3301,7 @@
                     loadProfilesData();
                     break;
                 case 'devices':
-                    loadDevicesData();
+                    initializeDevices();
                     break;
                 case 'hostnames':
                     loadHostnamesData();
@@ -3094,9 +3629,9 @@
             
             if (!devicesGrid || !devicesCount) {
                 console.error('Required elements not found:', { devicesGrid, devicesCount });
-                return;
-            }
-            
+                    return;
+                }
+                
             // Mock device data - in real implementation, this would come from API
             const devices = [
                 { name: 'iPhone 13', ip: '192.168.1.100', mac: '00:1B:44:11:3A:B7', status: 'online', active: true, lastSeen: null },
@@ -3143,7 +3678,7 @@
                     <div class="device-status">
                         <div class="status-dot ${device.status === 'online' ? 'online' : ''} ${device.active ? 'active' : ''}"></div>
                         <span>${device.status === 'online' ? (device.active ? 'Active Now' : 'Online') : 'Offline'}</span>
-                    </div>
+                            </div>
                     ${lastSeenHtml}
                 `;
                 
@@ -3333,8 +3868,8 @@
                                     <div class="app-name">${app.name}</div>
                                     ${deviceInfo}
                                     ${lastAccessedInfo}
-                                </div>
-                            </div>
+                        </div>
+                    </div>
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <div class="app-time">${app.time}</div>
                                 <div class="app-dot ${app.active ? 'active' : ''}"></div>
@@ -3429,7 +3964,7 @@
                     <div class="alert-content">
                         <div class="alert-title">${alert.title}</div>
                         <div class="alert-description">${alert.description}</div>
-                    </div>
+                            </div>
                     <div class="alert-time">${alert.time}</div>
                 `;
                 
@@ -3444,7 +3979,7 @@
             if (apps.classList.contains('expanded')) {
                 apps.classList.remove('expanded');
                 icon.classList.remove('expanded');
-            } else {
+                } else {
                 apps.classList.add('expanded');
                 icon.classList.add('expanded');
             }
@@ -3598,7 +4133,683 @@
                 closeSidebar();
             }
         });
+
+        // ========================================
+        // DEVICES SECTION FUNCTIONALITY
+        // ========================================
+
+        // Devices data management
+        let devicesData = {
+            devices: [],
+            sortColumn: null,
+            sortDirection: 'asc'
+        };
+
+        // Device traffic data for modal
+        let deviceTrafficData = {
+            sessions: [],
+            sortColumn: null,
+            sortDirection: 'asc'
+        };
+
+        // Initialize devices section
+        function initializeDevices() {
+            console.log('Initializing devices section...');
+            loadDevices();
+        }
+
+        // Load devices data
+        function loadDevices() {
+            console.log('Loading devices...');
+            
+            // Generate sample devices data
+            const sampleDevices = [
+                {
+                    id: 1,
+                    name: 'iPhone 12 Pro',
+                    ip: '192.168.1.100',
+                    mac: '00:1B:44:11:3A:B7',
+                    manufacturer: 'Apple',
+                    model: 'iPhone 12 Pro',
+                    status: 'online',
+                    lastSeen: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
+                    profile: 'John Doe'
+                },
+                {
+                    id: 2,
+                    name: 'MacBook Pro',
+                    ip: '192.168.1.101',
+                    mac: '00:1B:44:11:3A:B8',
+                    manufacturer: 'Apple',
+                    model: 'MacBook Pro 13"',
+                    status: 'online',
+                    lastSeen: new Date(Date.now() - 2 * 60 * 1000), // 2 minutes ago
+                    profile: 'John Doe'
+                },
+                {
+                    id: 3,
+                    name: 'Samsung Galaxy S21',
+                    ip: '192.168.1.102',
+                    mac: '00:1B:44:11:3A:B9',
+                    manufacturer: 'Samsung',
+                    model: 'Galaxy S21',
+                    status: 'offline',
+                    lastSeen: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+                    profile: 'Jane Smith'
+                },
+                {
+                    id: 4,
+                    name: 'Gaming PC',
+                    ip: '192.168.1.103',
+                    mac: '00:1B:44:11:3A:BA',
+                    manufacturer: 'Custom Build',
+                    model: 'Gaming Desktop',
+                    status: 'online',
+                    lastSeen: new Date(Date.now() - 1 * 60 * 1000), // 1 minute ago
+                    profile: 'Kids'
+                },
+                {
+                    id: 5,
+                    name: 'iPad Air',
+                    ip: '192.168.1.104',
+                    mac: '00:1B:44:11:3A:BB',
+                    manufacturer: 'Apple',
+                    model: 'iPad Air 4th Gen',
+                    status: 'offline',
+                    lastSeen: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
+                    profile: 'Kids'
+                },
+                {
+                    id: 6,
+                    name: 'Router',
+                    ip: '192.168.1.1',
+                    mac: '00:1B:44:11:3A:BC',
+                    manufacturer: 'Netgear',
+                    model: 'Nighthawk AX8',
+                    status: 'online',
+                    lastSeen: new Date(Date.now() - 10 * 1000), // 10 seconds ago
+                    profile: 'System'
+                }
+            ];
+
+            devicesData.devices = sampleDevices;
+            renderDevicesTable();
+        }
+
+        // Render devices table
+        function renderDevicesTable() {
+            console.log('Rendering devices table...');
+            const tbody = document.getElementById('devices-table-body');
+            if (!tbody) {
+                console.error('Devices table body not found');
+                    return;
+                }
+                
+            tbody.innerHTML = '';
+
+            devicesData.devices.forEach(device => {
+                const row = document.createElement('tr');
+                row.className = 'clickable-row';
+                row.onclick = () => toggleDeviceExpander(device.id);
+                row.innerHTML = `
+                    <td>
+                        <div class="device-info">
+                            <div class="device-name">${device.name || ''}</div>
+                            <div class="device-ip">${device.ip}</div>
+                            <div class="device-mac">${device.mac}</div>
+                    </div>
+                    </td>
+                    <td>
+                        ${device.manufacturer}
+                    </td>
+                    <td>
+                        <div class="session-status">
+                            <div class="status-dot ${device.status === 'online' ? 'status-active' : 'status-inactive'} ${device.status === 'online' ? 'pulse' : ''}"></div>
+                            ${device.status === 'online' ? 'Online' : `Offline · ${formatLastSeen(device.lastSeen)}`}
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Format last seen time
+        function formatLastSeen(date) {
+            const now = new Date();
+            const diff = now - date;
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+
+            if (minutes < 1) return 'Just now';
+            if (minutes < 60) return `${minutes}m ago`;
+            if (hours < 24) return `${hours}h ago`;
+            return `${days}d ago`;
+        }
+
+        // Sort devices table
+        function sortDevicesTable(column) {
+            console.log(`Sorting devices by: ${column}`);
+            
+            if (devicesData.sortColumn === column) {
+                if (devicesData.sortDirection === 'asc') {
+                    devicesData.sortDirection = 'desc';
+                } else if (devicesData.sortDirection === 'desc') {
+                    devicesData.sortColumn = null;
+                    devicesData.sortDirection = null;
+                    updateDevicesSortIndicators(null);
+                    renderDevicesTable();
+                    return;
+                }
+            } else {
+                devicesData.sortColumn = column;
+                devicesData.sortDirection = 'asc';
+            }
+
+            devicesData.devices.sort((a, b) => {
+                let aVal = a[column];
+                let bVal = b[column];
+
+                // Handle special cases
+                if (column === 'lastSeen') {
+                    aVal = a.lastSeen.getTime();
+                    bVal = b.lastSeen.getTime();
+                }
+
+                if (typeof aVal === 'string') {
+                    aVal = aVal.toLowerCase();
+                    bVal = bVal.toLowerCase();
+                }
+
+                if (devicesData.sortDirection === 'asc') {
+                    return aVal > bVal ? 1 : -1;
+                } else {
+                    return aVal < bVal ? 1 : -1;
+                }
+            });
+
+            // Update sort indicators
+            updateDevicesSortIndicators(column);
+            renderDevicesTable();
+        }
+
+        // Update sort indicators for devices table (↕/↑/↓)
+        function updateDevicesSortIndicators(activeColumn) {
+            document.querySelectorAll('#devices-table th.sortable, #devices-table th[data-sort]')
+                .forEach(header => {
+                    const icon = header.querySelector('.sort-icon');
+                    const col = header.dataset.sort || null;
+                    if (!icon || !col) return;
+                    if (!activeColumn || devicesData.sortColumn !== activeColumn || col !== activeColumn) {
+                        icon.textContent = '↕';
+                    return;
+                    }
+                    icon.textContent = devicesData.sortDirection === 'asc' ? '↑' : '↓';
+                });
+        }
+
+        // Toggle device expander
+        function toggleDeviceExpander(deviceId) {
+            console.log(`Toggling device expander for device ID: ${deviceId}`);
+            
+            const device = devicesData.devices.find(d => d.id === deviceId);
+            if (!device) {
+                console.error('Device not found');
+                return;
+            }
+
+            const expander = document.getElementById('device-expander');
+            if (!expander) return;
+
+            // Check if this device is already expanded
+            const isCurrentlyExpanded = expander.style.display !== 'none' && 
+                                      expander.dataset.deviceId == deviceId;
+
+            if (isCurrentlyExpanded) {
+                // Hide expander
+                expander.style.display = 'none';
+                expander.dataset.deviceId = '';
+            } else {
+                // Show expander for this device
+                expander.style.display = 'block';
+                expander.dataset.deviceId = deviceId;
+
+                // Set friendly name input
+                const nameInput = document.getElementById('device-friendly-name');
+                if (nameInput) {
+                    nameInput.value = device.name || '';
+                    nameInput.placeholder = 'Enter friendly name...';
+                }
+
+                // Initialize device traffic data
+                deviceTrafficData = {
+                    sessions: [],
+                    sortColumn: null,
+                    sortDirection: 'asc',
+                    timeRange: '15min',
+                    alerts: false
+                };
+
+                // Load device traffic sessions
+                loadDeviceTrafficSessions(deviceId);
+            }
+        }
+
+        // Load device information
+        function loadDeviceInfo(device) {
+            const grid = document.getElementById('device-info-grid');
+            if (!grid) return;
+
+            grid.innerHTML = `
+                <div class="device-info-item">
+                    <div class="device-info-label">Device Name</div>
+                    <div class="device-info-value">${device.name}</div>
+                </div>
+                <div class="device-info-item">
+                    <div class="device-info-label">IP Address</div>
+                    <div class="device-info-value">${device.ip}</div>
+                </div>
+                <div class="device-info-item">
+                    <div class="device-info-label">MAC Address</div>
+                    <div class="device-info-value">${device.mac}</div>
+                </div>
+                <div class="device-info-item">
+                    <div class="device-info-label">Manufacturer</div>
+                    <div class="device-info-value">${device.manufacturer}</div>
+                </div>
+                <div class="device-info-item">
+                    <div class="device-info-label">Model</div>
+                    <div class="device-info-value">${device.model}</div>
+                </div>
+                <div class="device-info-item">
+                    <div class="device-info-label">Status</div>
+                    <div class="device-info-value">${device.status === 'online' ? 'Online' : 'Offline'}</div>
+                </div>
+                <div class="device-info-item">
+                    <div class="device-info-label">Last Seen</div>
+                    <div class="device-info-value">${formatLastSeen(device.lastSeen)}</div>
+                </div>
+                <div class="device-info-item">
+                    <div class="device-info-label">Assigned Profile</div>
+                    <div class="device-info-value">${device.profile}</div>
+                </div>
+            `;
+        }
+
+        // Load device traffic sessions
+        function loadDeviceTrafficSessions(deviceId) {
+            console.log(`Loading traffic sessions for device ID: ${deviceId}`);
+            
+            // Generate sample traffic sessions for this device
+            const device = devicesData.devices.find(d => d.id === deviceId);
+            if (!device) return;
+
+            const sampleSessions = [
+                {
+                    id: 1,
+                    device: device.name || 'Unknown Device',
+                    deviceIp: device.ip,
+                    category: 'Social Media',
+                    categoryId: 1,
+                    app: 'Instagram',
+                    appId: 1,
+                    startTime: new Date(Date.now() - 15 * 60 * 1000),
+                    endTime: new Date(Date.now() - 10 * 60 * 1000),
+                    duration: 5 * 60 * 1000,
+                    dataBytes: 2.5 * 1024 * 1024,
+                    isActive: false,
+                    hasAlert: false
+                },
+                {
+                    id: 2,
+                    device: device.name || 'Unknown Device',
+                    deviceIp: device.ip,
+                    category: 'Entertainment',
+                    categoryId: 5,
+                    app: 'YouTube',
+                    appId: 5,
+                    startTime: new Date(Date.now() - 30 * 60 * 1000),
+                    endTime: new Date(Date.now() - 5 * 60 * 1000),
+                    duration: 25 * 60 * 1000,
+                    dataBytes: 15.2 * 1024 * 1024,
+                    isActive: true,
+                    hasAlert: true
+                },
+                {
+                    id: 3,
+                    device: device.name || 'Unknown Device',
+                    deviceIp: device.ip,
+                    category: 'Gaming',
+                    categoryId: 3,
+                    app: 'Steam',
+                    appId: 3,
+                    startTime: new Date(Date.now() - 45 * 60 * 1000),
+                    endTime: new Date(Date.now() - 20 * 60 * 1000),
+                    duration: 25 * 60 * 1000,
+                    dataBytes: 45.8 * 1024 * 1024,
+                    isActive: false,
+                    hasAlert: false
+                }
+            ];
+
+            // Apply time range filter
+            let filteredSessions = sampleSessions.filter(session => {
+                const now = new Date();
+                const sessionTime = session.startTime;
+                const timeDiff = now - sessionTime;
+                
+                switch (deviceTrafficData.timeRange) {
+                    case '15min':
+                        return timeDiff <= 15 * 60 * 1000;
+                    case '1hour':
+                        return timeDiff <= 60 * 60 * 1000;
+                    case '2hours':
+                        return timeDiff <= 2 * 60 * 60 * 1000;
+                    case 'daily':
+                        return timeDiff <= 24 * 60 * 60 * 1000;
+                    default:
+                        return true;
+                }
+            });
+
+            // Apply alert filter
+            if (deviceTrafficData.alerts) {
+                filteredSessions = filteredSessions.filter(session => session.hasAlert);
+            }
+
+            deviceTrafficData.sessions = filteredSessions;
+            renderDeviceTrafficTable();
+            updateDeviceAlertBadge();
+        }
+
+        // Render device traffic table
+        function renderDeviceTrafficTable() {
+            const tbody = document.getElementById('device-traffic-table-body');
+            if (!tbody) return;
+
+            tbody.innerHTML = '';
+
+            deviceTrafficData.sessions.forEach(session => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div class="device-info">
+                            <div class="device-name">${session.device}</div>
+                            <div class="device-ip">${session.deviceIp}</div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="category-badge category-${session.categoryId}">${session.category}</span>
+                    </td>
+                    <td>
+                        <div class="accessing-info">
+                            <div class="accessing-app">${session.app}</div>
+                            <div class="accessing-time">${formatTime(session.startTime)}</div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="duration-info">${formatDuration(session.duration)}</div>
+                    </td>
+                    <td>
+                        <div class="data-info">${formatDataBytes(session.dataBytes)}</div>
+                    </td>
+                    <td>
+                        <div class="session-status">
+                            <div class="status-dot ${session.isActive ? 'status-active' : 'status-inactive'}"></div>
+                            ${session.isActive ? 'Active' : 'Inactive'}
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Update device alert badge
+        function updateDeviceAlertBadge() {
+            const badge = document.getElementById('device-alert-badge');
+            const count = badge?.querySelector('.alert-count');
+            if (count) {
+                const alertCount = deviceTrafficData.sessions.filter(s => s.hasAlert).length;
+                count.textContent = alertCount;
+            }
+        }
+
+        // Filter device traffic by clicked value
+        function filterDeviceTrafficByValue(column, value) {
+            console.log(`Filtering device traffic by: ${column} = ${value}`);
+            // This would filter the device traffic table by the clicked value
+            // For now, just log the action
+        }
+
+        // Sort device traffic table
+        function sortDeviceTrafficTable(column) {
+            console.log(`Sorting device traffic by: ${column}`);
+            
+            if (deviceTrafficData.sortColumn === column) {
+                if (deviceTrafficData.sortDirection === 'asc') {
+                    deviceTrafficData.sortDirection = 'desc';
+                } else if (deviceTrafficData.sortDirection === 'desc') {
+                    deviceTrafficData.sortColumn = null;
+                    deviceTrafficData.sortDirection = null;
+                    updateDeviceTrafficSortIndicators(null);
+                    renderDeviceTrafficTable();
+                    return;
+                }
+                } else {
+                deviceTrafficData.sortColumn = column;
+                deviceTrafficData.sortDirection = 'asc';
+            }
+
+            deviceTrafficData.sessions.sort((a, b) => {
+                let aVal = a[column];
+                let bVal = b[column];
+
+                if (column === 'startTime') {
+                    aVal = a.startTime.getTime();
+                    bVal = b.startTime.getTime();
+                }
+
+                if (typeof aVal === 'string') {
+                    aVal = aVal.toLowerCase();
+                    bVal = bVal.toLowerCase();
+                }
+
+                if (deviceTrafficData.sortDirection === 'asc') {
+                    return aVal > bVal ? 1 : -1;
+                } else {
+                    return aVal < bVal ? 1 : -1;
+                }
+            });
+
+            updateDeviceTrafficSortIndicators(column);
+            renderDeviceTrafficTable();
+        }
+
+        // Update sort indicators for device traffic table
+        function updateDeviceTrafficSortIndicators(activeColumn) {
+            const headers = document.querySelectorAll('#device-traffic-table th.sortable');
+            headers.forEach(header => {
+                const indicator = header.querySelector('.sort-indicator');
+                const column = header.getAttribute('onclick').match(/'([^']+)'/)[1];
+                
+                if (column === activeColumn && deviceTrafficData.sortColumn === activeColumn) {
+                    indicator.textContent = deviceTrafficData.sortDirection === 'asc' ? ' ↑' : ' ↓';
+                } else {
+                    indicator.textContent = '';
+                }
+            });
+        }
+
+        // Close device expander
+        function closeDeviceExpander() {
+            const expander = document.getElementById('device-expander');
+            if (expander) {
+                expander.style.display = 'none';
+                expander.dataset.deviceId = '';
+            }
+        }
+
+        // Refresh devices
+        function refreshDevices() {
+            console.log('Refreshing devices...');
+            loadDevices();
+        }
+
+        // Scan network for new devices
+        function scanNetwork() {
+            console.log('Scanning network for new devices...');
+            // This would trigger a network scan
+            // For now, just refresh the devices
+            refreshDevices();
+        }
+
+        // Device name editing functions
+        function saveDeviceName() {
+            const nameInput = document.getElementById('device-friendly-name');
+            if (!nameInput) return;
+
+            const expander = document.getElementById('device-expander');
+            if (!expander || !expander.dataset.deviceId) return;
+
+            const deviceId = parseInt(expander.dataset.deviceId);
+            const device = devicesData.devices.find(d => d.id === deviceId);
+            if (!device) return;
+
+            const newName = nameInput.value.trim();
+            console.log(`Saving device name: ${newName} for device ID: ${deviceId}`);
+            
+            // Update device name
+            device.name = newName;
+            
+            // Re-render the devices table to show updated name
+            renderDevicesTable();
+            
+            // In a real implementation, this would update the device in the database
+        }
+
+        function handleDeviceNameKeypress(event) {
+            if (event.key === 'Enter') {
+                saveDeviceName();
+                event.target.blur();
+            }
+        }
+
+        function clearDeviceName() {
+            const nameInput = document.getElementById('device-friendly-name');
+            if (nameInput) {
+                nameInput.value = '';
+                nameInput.focus();
+            }
+        }
+
+        // Device time range functions
+        function setDeviceTimeRange(timeRange) {
+            console.log(`Setting device time range: ${timeRange}`);
+            
+            // Update active tab
+            document.querySelectorAll('.device-time-filters .time-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Update device traffic data
+            deviceTrafficData.timeRange = timeRange;
+            
+            // Get current device ID from expander
+            const expander = document.getElementById('device-expander');
+            if (!expander || !expander.dataset.deviceId) return;
+            
+            const deviceId = parseInt(expander.dataset.deviceId);
+            
+            // Reload traffic sessions
+            loadDeviceTrafficSessions(deviceId);
+        }
+
+        function toggleDeviceAlertFilter() {
+            console.log('Toggling device alert filter');
+            
+            deviceTrafficData.alerts = !deviceTrafficData.alerts;
+            
+            // Update button appearance
+            const badge = document.getElementById('device-alert-badge');
+            if (badge) {
+                badge.classList.toggle('active', deviceTrafficData.alerts);
+            }
+            
+            // Get current device ID from expander
+            const expander = document.getElementById('device-expander');
+            if (!expander || !expander.dataset.deviceId) return;
+            
+            const deviceId = parseInt(expander.dataset.deviceId);
+            
+            // Reload traffic sessions
+            loadDeviceTrafficSessions(deviceId);
+        }
+
+        // ========================================
+        // FIXED CELL CLICKING BEHAVIOR
+        // ========================================
+
+        // Fixed filterByValue function for Live table
+        function filterByValue(column, value) {
+            console.log(`Adding filter: ${column} = ${value}`);
+            
+            // Add appropriate filter based on column
+            switch (column) {
+                case 'device':
+                    // Filter by device name directly, not by profile
+                    if (!liveData.filters.devices.includes(value)) {
+                        liveData.filters.devices.push(value);
+                        updateActiveFilters();
+                        loadSessionsTable();
+                    }
+                    break;
+                case 'category':
+                    if (!liveData.filters.categories.includes(value)) {
+                        toggleCategoryFilter(value);
+                    }
+                    break;
+                case 'app':
+                    if (!liveData.filters.apps.includes(value)) {
+                        toggleAppFilter(value);
+                    }
+                    break;
+                case 'duration':
+                    // Filter by duration range
+                    if (!liveData.filters.durations.includes(value)) {
+                        liveData.filters.durations.push(value);
+                        updateActiveFilters();
+                        loadSessionsTable();
+                    }
+                    break;
+                case 'data':
+                    // Filter by data range
+                    if (!liveData.filters.dataRanges.includes(value)) {
+                        liveData.filters.dataRanges.push(value);
+                        updateActiveFilters();
+                        loadSessionsTable();
+                    }
+                    break;
+                case 'status':
+                    // Filter by status
+                    if (!liveData.filters.statuses.includes(value)) {
+                        liveData.filters.statuses.push(value);
+                        updateActiveFilters();
+                        loadSessionsTable();
+                    }
+                    break;
+            }
+        }
+
+        // Add device filters to liveData
+        if (typeof liveData !== 'undefined') {
+            liveData.filters.devices = liveData.filters.devices || [];
+            liveData.filters.durations = liveData.filters.durations || [];
+            liveData.filters.dataRanges = liveData.filters.dataRanges || [];
+            liveData.filters.statuses = liveData.filters.statuses || [];
+        }
     </script>
 </body>
+</html>
 </html>
 </html>
