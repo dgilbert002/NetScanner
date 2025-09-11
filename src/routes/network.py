@@ -1,5 +1,7 @@
 from flask import Blueprint, jsonify, request
 from src.models.network import Device, TrafficSession, EnrichedData, WebsiteVisit, NetworkStats, db
+from src.models.hostnames import HnCategory, HnApp, HnRule, bootstrap_defaults
+import tldextract
 from src.packet_capture import NetworkMonitor
 from datetime import datetime, timedelta
 import asyncio
@@ -137,6 +139,66 @@ def get_website_visits():
         return jsonify([visit.to_dict() for visit in visits])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+def _extract_root_domain(hostname: str) -> str:
+    if not hostname:
+        return ''
+    ext = tldextract.extract(hostname)
+    root = '.'.join(p for p in [ext.domain, ext.suffix] if p)
+    return root.lower()
+
+
+@network_bp.route('/classify', methods=['POST'])
+def classify_flow():
+    """DNS/SNI-first classifier. Input: { hostname, sni, ip }
+    Returns { category, app, rule_source, confidence }
+    """
+    data = request.get_json(force=True)
+    hostname = (data.get('hostname') or data.get('sni') or '').lower()
+    ip = (data.get('ip') or '').lower()
+    print('classify_flow()', data)
+
+    bootstrap_defaults()
+
+    # 1) Domain rules (exact, then root)
+    root = _extract_root_domain(hostname)
+    if hostname:
+        rule = HnRule.query.filter_by(type='domain', value=hostname).first()
+        if not rule and root and root != hostname:
+            rule = HnRule.query.filter_by(type='domain', value=root).first()
+        if rule:
+            app = HnApp.query.get(rule.app_id)
+            cat = HnCategory.query.get(app.category_id) if app else None
+            return jsonify({
+                'category': cat.name if cat else 'Uncategorized',
+                'app': app.name if app else 'Unknown',
+                'rule_source': rule.source,
+                'confidence': rule.confidence
+            })
+
+    # 2) IP rules
+    if ip:
+        rule = HnRule.query.filter_by(type='ip', value=ip).first()
+        if rule:
+            app = HnApp.query.get(rule.app_id)
+            cat = HnCategory.query.get(app.category_id) if app else None
+            return jsonify({
+                'category': cat.name if cat else 'Uncategorized',
+                'app': app.name if app else 'Unknown',
+                'rule_source': rule.source,
+                'confidence': rule.confidence
+            })
+
+    # 3) Fallback
+    cat = HnCategory.query.filter_by(name='Uncategorized').first()
+    app = HnApp.query.filter_by(name='Unknown').first()
+    return jsonify({
+        'category': cat.name if cat else 'Uncategorized',
+        'app': app.name if app else 'Unknown',
+        'rule_source': 'fallback',
+        'confidence': 0.2
+    })
 
 @network_bp.route('/websites/top-domains', methods=['GET'])
 def get_top_domains():

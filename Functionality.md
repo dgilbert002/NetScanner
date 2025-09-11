@@ -841,3 +841,38 @@ case 'device':
 ---
 
 This documentation serves as the foundation for integrating live network monitoring data into the existing UI framework. Each function and interaction is designed to work seamlessly with real-time data while maintaining the current user experience.
+
+## 13. Hostnames, Categories, Apps, and Rules
+
+### 13.1 Data Model (SQLite)
+- Categories (`hn_categories`): id, name, description, is_system, created_at, updated_at
+- Apps/Sites (`hn_apps`): id, category_id, name, slug, is_system, created_at, updated_at
+- Match Rules (`hn_rules`): id, app_id, type (domain|ip|cidr|sni|regex), value, source (manual|auto|ndpi), confidence (0–1), created_at, updated_at
+- Defaults: `Uncategorized` category and `Unknown` app are created automatically.
+
+### 13.2 REST Endpoints
+- `POST /api/hostnames/bootstrap` → ensure defaults
+- `GET/POST/PUT/DELETE /api/hostnames/categories`
+- `GET/POST/PUT/DELETE /api/hostnames/apps`
+- `GET/POST/PUT/DELETE /api/hostnames/rules`
+- Classifier: `POST /api/network/classify` with `{ hostname, sni, ip }` → returns `{ category, app, rule_source, confidence }`
+
+### 13.3 Classification Precedence
+1. Local rules (exact domain → root domain → ip)
+2. Cache (future)
+3. DPI (optional nDPI) if enabled (future)
+4. Fallback → `Uncategorized` / `Unknown` with low confidence
+
+### 13.4 UI Workflow (Hostnames Tab)
+- Three panels:
+  - Categories: list, add, edit, delete; selecting filters apps
+  - Apps & Sites: list, add, edit, delete tied to selected category; selecting filters rules
+  - Match Rules: list, add (domain/IP), edit, delete tied to selected app
+- Quick-add flow (from Live/Devices row) planned: create domain rule and pick category/app.
+
+### 13.5 Raspberry Pi Notes
+- No API keys required. Uses DNS/SNI and local rules; optionally integrates nDPI if installed.
+- Packages: tshark, libpcap, pyshark, scapy, tldextract, publicsuffix2, dnspython.
+
+### 13.6 Logging
+- Each endpoint logs the function name, parameters, and return status to aid troubleshooting.

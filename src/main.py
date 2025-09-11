@@ -99,6 +99,14 @@ try:
 except ImportError as e:
     print(f"⚠️ Could not load device admin: {e}")
 
+# Register hostnames manager routes
+try:
+    from src.routes.hostnames import hostnames_bp
+    app.register_blueprint(hostnames_bp)
+    print("✅ Hostnames manager routes loaded")
+except ImportError as e:
+    print(f"⚠️ Could not load hostnames manager: {e}")
+
 # Serve group management page
 @app.route('/groups')
 def groups_page():

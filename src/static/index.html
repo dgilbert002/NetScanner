@@ -1417,6 +1417,10 @@
             font-weight: 600;
         }
 
+        .quick-actions { display: flex; gap: 8px; align-items: center; }
+        .quick-action { color: var(--primary); font-size: 0.85rem; cursor: pointer; user-select: none; }
+        .quick-action:hover { text-decoration: underline; }
+
         /* Devices Section Styles */
         .devices-header {
             display: flex;
@@ -1571,6 +1575,21 @@
             border: 1px solid var(--border);
             overflow: hidden;
         }
+
+        /* Hostnames manager */
+        .hostnames-container { padding: 16px; }
+        .hn-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+        .hn-panel { background: #fff; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+        .hn-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--light); border-bottom: 1px solid var(--border); }
+        .hn-panel-body { padding: 12px 16px; max-height: 420px; overflow: auto; }
+        .hn-list { list-style: none; margin: 0; padding: 0; }
+        .hn-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed var(--border); }
+        .hn-item:last-child { border-bottom: none; }
+        .hn-item-title { font-weight: 600; color: var(--dark); }
+        .hn-item-sub { font-size: 0.85rem; color: var(--gray); }
+        .hn-actions .btn { border: 1px solid var(--border); background: #fff; color: var(--gray); padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+        .hn-actions .btn:hover { border-color: var(--primary); color: var(--primary); }
+        .btn-small { font-size: 0.85rem; }
 
         /* Device Modal Styles */
         .device-modal-content {
@@ -2088,14 +2107,7 @@
                         <span>Live</span>
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a href="#profiles" class="nav-link" onclick="showSection('profiles')">
-                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                        </svg>
-                        <span>Profiles</span>
-                    </a>
-                </li>
+                
                 <li class="nav-item">
                     <a href="#devices" class="nav-link" onclick="showSection('devices')">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
@@ -2106,11 +2118,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="#hostnames" class="nav-link" onclick="showSection('hostnames')">
+                    <a href="#rules" class="nav-link" onclick="showSection('rules')">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 2L2 7v10l10 5 10-5V7l-10-5zm0 3.09L18.26 7 12 10.91 5.74 7 12 5.09zM4 8.82l7 3.89v6.97L4 15.78V8.82zm16 6.96l-7 3.9v-6.97l7-3.89v6.96z"/>
                         </svg>
-                        <span>Hostnames</span>
+                        <span>Rules</span>
+                        <span class="badge" id="rules-badge" style="display:none;">0</span>
                     </a>
                 </li>
             </ul>
@@ -2388,12 +2401,50 @@
                 </div>
             </div>
 
-            <div id="hostnames-section" class="tab-content">
-                <div style="text-align: center; padding: 40px; color: var(--gray);">
-                    <h2>Hostname Management</h2>
-                    <p>Manage hostnames and applications here</p>
+            <div id="rules-section" class="tab-content">
+                <div class="hostnames-container">
+                    <div class="hn-columns">
+                        <!-- Categories -->
+                        <section class="hn-panel">
+                            <div class="hn-panel-header">
+                                <h3>Categories</h3>
+                                <div class="hn-actions">
+                                    <button class="btn btn-small" onclick="showAddCategory()">+ Category</button>
+                                </div>
+                            </div>
+                            <div class="hn-panel-body">
+                                <ul id="hn-categories" class="hn-list"></ul>
+                            </div>
+                        </section>
+
+                        <!-- Apps/Sites -->
+                        <section class="hn-panel">
+                            <div class="hn-panel-header">
+                                <h3>Apps & Sites</h3>
+                                <div class="hn-actions">
+                                    <button class="btn btn-small" onclick="showAddApp()">+ App/Site</button>
+                                </div>
+                            </div>
+                            <div class="hn-panel-body">
+                                <ul id="hn-apps" class="hn-list"></ul>
+                            </div>
+                        </section>
+
+                        <!-- Match Rules -->
+                        <section class="hn-panel">
+                            <div class="hn-panel-header">
+                                <h3>Match Rules</h3>
+                                <div class="hn-actions">
+                                    <button class="btn btn-small" onclick="showAddRule()">+ Rule</button>
+                                </div>
+                            </div>
+                            <div class="hn-panel-body">
+                                <ul id="hn-rules" class="hn-list"></ul>
+                            </div>
+                        </section>
+                    </div>
+                </div>
             </div>
-        </div>
     </div>
     </main>
 
@@ -3050,8 +3101,20 @@
                 });
             }
             
-            // Render rows
-            filteredSessions.forEach(session => {
+            // Render rows (with async classification for unknowns)
+            filteredSessions.forEach(async session => {
+                // If category/app unknown, call classifier (demo check: empty or 'Unknown')
+                if (!session.category || !session.app || session.category === 'Uncategorized' || session.app === 'Unknown') {
+                    try {
+                        const res = await fetch('/api/network/classify', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ hostname: session.hostname || session.domain || '', sni: session.sni || '', ip: session.deviceIp || '' })
+                        });
+                        const cls = await res.json();
+                        session.category = cls.category || session.category;
+                        session.app = cls.app || session.app;
+                    } catch (e) { console.warn('classify failed', e); }
+                }
                 const row = createSessionRow(session);
                 tbody.appendChild(row);
             });
@@ -3088,6 +3151,12 @@
                     </div>
                 </td>
             `;
+            // Quick action cell for rule add (append after status)
+            const qa = document.createElement('td');
+            qa.innerHTML = `<div class="quick-actions"><span class="quick-action" onclick="event.stopPropagation(); quickAddRule('${session.app}', '${session.category}', '${session.deviceIp}', '${session.hostname || ''}')">Add rule</span></div>`;
+            // some tables may not include this column in header, but we can append to row to keep action available
+            // If you prefer a fixed column, add a header TH and styling.
+            row.appendChild(qa);
             return row;
         }
 
@@ -3204,17 +3273,25 @@
 
         // Handle F5 refresh to maintain current section
         function handleRefresh() {
-            const currentSection = localStorage.getItem('currentSection') || 'home';
-            if (currentSection === 'live') {
-                loadLiveData();
-            } else if (currentSection === 'home') {
-                loadProfiles();
-            }
+            const saved = localStorage.getItem('currentSection') || 'home';
+            // Ensure nav state & content both reflect saved section
+            showSection(saved);
+        }
+
+        // Resolve section from URL hash or localStorage
+        function getSavedSection() {
+            let sec = (window.location.hash || '').replace('#', '');
+            if (!sec) sec = localStorage.getItem('currentSection') || 'home';
+            // Normalize legacy names
+            if (sec === 'hostnames') sec = 'rules';
+            return sec;
         }
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
-            loadProfiles();
+            // Initial load: prefer hash, then saved section, then home
+            const saved = getSavedSection();
+            showSection(saved);
             startAutoRefresh();
             initializeTableSorting();
             
@@ -3223,8 +3300,16 @@
                 localStorage.setItem('currentSection', currentSection);
             });
             
-            // Handle page load after refresh
+            // Handle page load after refresh (redundant but safe on some browsers)
             window.addEventListener('load', handleRefresh);
+
+            // Keep UI in sync with URL hash when user navigates back/forward
+            window.addEventListener('hashchange', function() {
+                const sec = getSavedSection();
+                if (sec && sec !== currentSection) {
+                    showSection(sec);
+                }
+            });
         });
 
         // Update time every minute
@@ -3273,39 +3358,72 @@
                 el.classList.remove('active');
             });
             
-            // Show selected section
-            document.getElementById(section + '-section').classList.add('active');
+            // Normalize section and show selected; if missing, fallback
+            if (section === 'hostnames') section = 'rules';
+            let targetSection = document.getElementById(section + '-section');
+            if (!targetSection) {
+                console.warn('Section not found:', section, 'falling back to home');
+                section = 'home';
+                targetSection = document.getElementById('home-section');
+            }
+            if (targetSection && targetSection.classList) {
+                targetSection.classList.add('active');
+            }
             
             // Add active class to selected nav link
-            event.target.closest('.nav-link').classList.add('active');
+            let linkToActivate = null;
+            try {
+                const evt = (typeof event !== 'undefined') ? event : null;
+                if (evt && evt.currentTarget && typeof evt.currentTarget.matches === 'function' && evt.currentTarget.matches('a.nav-link')) {
+                    linkToActivate = evt.currentTarget;
+                }
+            } catch (_) {}
+            if (!linkToActivate) {
+                linkToActivate = document.querySelector(`a.nav-link[href="#${section}"]`);
+            }
+            if (linkToActivate && linkToActivate.classList) {
+                linkToActivate.classList.add('active');
+            }
             
             currentSection = section;
             
             // Save current section for refresh handling
             localStorage.setItem('currentSection', section);
+
+            // Reflect section in URL hash without causing extra navigation
+            const desiredHash = '#' + section;
+            if (window.location.hash !== desiredHash) {
+                try { history.replaceState(null, '', desiredHash); } catch (_) { window.location.hash = desiredHash; }
+            }
             
             // Close sidebar on mobile after selection
             if (window.innerWidth <= 768) {
                 closeSidebar();
             }
             
-            // Load section-specific data
+            // Load section-specific data (guard against repeated re-attaches)
             switch(section) {
                 case 'home':
+                    if (!window.__loaded_home) { window.__loaded_home = true; }
                     loadProfiles();
                     break;
                 case 'live':
+                    if (!window.__loaded_live) { window.__loaded_live = true; initializeTableSorting(); }
                     loadLiveData();
                     break;
-                case 'profiles':
-                    loadProfilesData();
-                    break;
                 case 'devices':
+                    if (!window.__loaded_devices) { window.__loaded_devices = true; }
                     initializeDevices();
                     break;
-                case 'hostnames':
+                case 'rules':
+                    if (!window.__loaded_rules) { window.__loaded_rules = true; }
                     loadHostnamesData();
                     break;
+            }
+
+            // Ensure add button visibility is only on Home
+            if (typeof updateAddButtonVisibility === 'function') {
+                updateAddButtonVisibility();
             }
         }
 
@@ -3323,6 +3441,10 @@
                 const data = await response.json();
                 
                 const profilesGrid = document.getElementById('profiles-grid');
+                if (!profilesGrid) {
+                    console.warn('profiles-grid not ready, retrying next frame');
+                    return requestAnimationFrame(loadProfiles);
+                }
                 const addContainer = document.getElementById('add-profile-container');
                 const bottomButton = document.getElementById('bottom-add-button');
                 
@@ -3358,6 +3480,10 @@
                 
                 // Show sample data on error
                 const profilesGrid = document.getElementById('profiles-grid');
+                if (!profilesGrid) {
+                    console.warn('profiles-grid not ready in catch, retrying next frame');
+                    return requestAnimationFrame(loadProfiles);
+                }
                 const sampleProfiles = [
                     { id: 1, name: 'John Doe', picture: null, device_count: 2 },
                     { id: 2, name: 'Jane Smith', picture: null, device_count: 1 },
@@ -4093,6 +4219,13 @@
             const modal = document.getElementById('add-profile-modal');
             const profileDetail = document.getElementById('profile-detail-section');
             
+            // Only show add controls on Home
+            if (currentSection !== 'home') {
+                if (addContainer) addContainer.style.display = 'none';
+                if (bottomButton) bottomButton.style.display = 'none';
+                return;
+            }
+            
             // Hide add buttons when modal is open or on profile detail screen
             const shouldHide = modal && modal.classList.contains('active') || 
                               profileDetail && profileDetail.classList.contains('active');
@@ -4158,6 +4291,269 @@
             loadDevices();
         }
 
+        // ========================================
+        // HOSTNAMES MANAGER (CATEGORIES/APPS/RULES)
+        // ========================================
+        let hnData = {
+            categories: [
+                // loaded from API
+            ],
+            apps: [
+                // loaded from API
+            ],
+            rules: [
+                // loaded from API
+            ],
+            selectedCategoryId: null,
+            selectedAppId: null
+        };
+
+        const HN_API = '/api/hostnames';
+
+        async function hnBootstrap() {
+            try {
+                await fetch(`${HN_API}/bootstrap`, { method: 'POST' });
+            } catch (e) { console.warn('bootstrap failed', e); }
+        }
+
+        async function loadHostnamesData() {
+            await hnBootstrap();
+            await fetchCategories();
+            await fetchApps();
+            await fetchRules();
+            renderCategories();
+            renderApps();
+            renderRules();
+            updateRulesBadge();
+        }
+
+        // ---------- API helpers ----------
+        async function fetchCategories() {
+            const res = await fetch(`${HN_API}/categories`);
+            const json = await res.json();
+            hnData.categories = json.categories || [];
+        }
+
+        async function createCategoryAPI(payload) {
+            const res = await fetch(`${HN_API}/categories`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            });
+            return res.json();
+        }
+
+        async function updateCategoryAPI(id, payload) {
+            const res = await fetch(`${HN_API}/categories/${id}`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            });
+            return res.json();
+        }
+
+        async function deleteCategoryAPI(id) {
+            await fetch(`${HN_API}/categories/${id}`, { method: 'DELETE' });
+        }
+
+        async function fetchApps() {
+            const url = hnData.selectedCategoryId ? `${HN_API}/apps?category_id=${hnData.selectedCategoryId}` : `${HN_API}/apps`;
+            const res = await fetch(url);
+            const json = await res.json();
+            hnData.apps = json.apps || [];
+        }
+
+        async function createAppAPI(payload) {
+            const res = await fetch(`${HN_API}/apps`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            });
+            return res.json();
+        }
+
+        async function updateAppAPI(id, payload) {
+            const res = await fetch(`${HN_API}/apps/${id}`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            });
+            return res.json();
+        }
+
+        async function deleteAppAPI(id) { await fetch(`${HN_API}/apps/${id}`, { method: 'DELETE' }); }
+
+        async function fetchRules() {
+            const url = hnData.selectedAppId ? `${HN_API}/rules?app_id=${hnData.selectedAppId}` : `${HN_API}/rules`;
+            const res = await fetch(url);
+            const json = await res.json();
+            hnData.rules = json.rules || [];
+        }
+
+        async function createRuleAPI(payload) {
+            const res = await fetch(`${HN_API}/rules`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            });
+            return res.json();
+        }
+
+        async function updateRuleAPI(id, payload) {
+            const res = await fetch(`${HN_API}/rules/${id}`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            });
+            return res.json();
+        }
+
+        async function deleteRuleAPI(id) { await fetch(`${HN_API}/rules/${id}`, { method: 'DELETE' }); }
+
+        function updateRulesBadge() {
+            // Heuristic: show count of rules tied to 'Unknown' app or category 'Uncategorized'
+            const rulesBadge = document.getElementById('rules-badge');
+            if (!rulesBadge) return;
+            // Find ids
+            const uncCat = hnData.categories.find(c => c.name === 'Uncategorized');
+            const unkApp = hnData.apps.find(a => a.name === 'Unknown');
+            const uncAppIds = new Set((hnData.apps || []).filter(a => uncCat && a.category_id === uncCat.id).map(a => a.id));
+            let count = 0;
+            (hnData.rules || []).forEach(r => { if ((unkApp && r.app_id === unkApp.id) || uncAppIds.has(r.app_id)) count++; });
+            if (count > 0) { rulesBadge.style.display = 'inline-block'; rulesBadge.textContent = String(count); }
+            else { rulesBadge.style.display = 'none'; rulesBadge.textContent = '0'; }
+        }
+
+        function renderCategories() {
+            const list = document.getElementById('hn-categories');
+            if (!list) return;
+            list.innerHTML = '';
+            hnData.categories.forEach(cat => {
+                const li = document.createElement('li');
+                li.className = 'hn-item';
+                li.innerHTML = `
+                    <div>
+                        <div class="hn-item-title">${cat.name}</div>
+                    </div>
+                    <div class="hn-actions">
+                        <button class="btn btn-small" onclick="editCategory(${cat.id})">Edit</button>
+                        <button class="btn btn-small" onclick="deleteCategory(${cat.id})">Delete</button>
+                        <button class="btn btn-small" onclick="selectCategory(${cat.id})">Select</button>
+                    </div>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        function renderApps() {
+            const list = document.getElementById('hn-apps');
+            if (!list) return;
+            list.innerHTML = '';
+            const apps = hnData.selectedCategoryId ? hnData.apps.filter(a => a.categoryId === hnData.selectedCategoryId) : hnData.apps;
+            apps.forEach(app => {
+                const cat = hnData.categories.find(c => c.id === app.categoryId);
+                const li = document.createElement('li');
+                li.className = 'hn-item';
+                li.innerHTML = `
+                    <div>
+                        <div class="hn-item-title">${app.name}</div>
+                        <div class="hn-item-sub">${cat ? cat.name : ''}</div>
+                    </div>
+                    <div class="hn-actions">
+                        <button class="btn btn-small" onclick="editApp(${app.id})">Edit</button>
+                        <button class="btn btn-small" onclick="deleteApp(${app.id})">Delete</button>
+                        <button class="btn btn-small" onclick="selectApp(${app.id})">Select</button>
+                    </div>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        function renderRules() {
+            const list = document.getElementById('hn-rules');
+            if (!list) return;
+            list.innerHTML = '';
+            const rules = hnData.selectedAppId ? hnData.rules.filter(r => r.appId === hnData.selectedAppId) : hnData.rules;
+            rules.forEach(rule => {
+                const app = hnData.apps.find(a => a.id === rule.appId);
+                const li = document.createElement('li');
+                li.className = 'hn-item';
+                li.innerHTML = `
+                    <div>
+                        <div class="hn-item-title">${rule.type === 'domain' ? rule.value : rule.value}</div>
+                        <div class="hn-item-sub">${app ? app.name : ''} · ${rule.type}</div>
+                    </div>
+                    <div class="hn-actions">
+                        <button class="btn btn-small" onclick="editRule(${rule.id})">Edit</button>
+                        <button class="btn btn-small" onclick="deleteRule(${rule.id})">Delete</button>
+                    </div>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        // Selection helpers
+        function selectCategory(id) { hnData.selectedCategoryId = id; hnData.selectedAppId = null; renderApps(); renderRules(); }
+        function selectApp(id) { hnData.selectedAppId = id; renderRules(); }
+
+        // CRUD stubs (to be wired to backend)
+        async function showAddCategory() {
+            const name = prompt('New category name');
+            if (!name) return;
+            await createCategoryAPI({ name });
+            await fetchCategories();
+            renderCategories();
+        }
+        async function editCategory(id) {
+            const cat = hnData.categories.find(c => c.id === id);
+            if (!cat) return;
+            const name = prompt('Edit category name', cat.name);
+            if (name === null) return;
+            await updateCategoryAPI(id, { name });
+            await fetchCategories();
+            renderCategories();
+            await fetchApps();
+            renderApps();
+        }
+        async function deleteCategory(id) {
+            if (!confirm('Delete category and all its apps/rules?')) return;
+            await deleteCategoryAPI(id);
+            if (hnData.selectedCategoryId === id) hnData.selectedCategoryId = null;
+            await fetchCategories();
+            await fetchApps();
+            await fetchRules();
+            renderCategories(); renderApps(); renderRules();
+        }
+
+        async function showAddApp() {
+            if (!hnData.selectedCategoryId) { alert('Select a category first'); return; }
+            const name = prompt('New app/site name');
+            if (!name) return;
+            await createAppAPI({ category_id: hnData.selectedCategoryId, name });
+            await fetchApps();
+            renderApps();
+        }
+        async function editApp(id) {
+            const app = hnData.apps.find(a => a.id === id); if (!app) return;
+            const name = prompt('Edit app/site name', app.name);
+            if (name === null) return;
+            await updateAppAPI(id, { name });
+            await fetchApps(); renderApps(); await fetchRules(); renderRules();
+        }
+        async function deleteApp(id) {
+            if (!confirm('Delete app and all its rules?')) return;
+            await deleteAppAPI(id);
+            if (hnData.selectedAppId === id) hnData.selectedAppId = null;
+            await fetchApps(); await fetchRules(); renderApps(); renderRules();
+        }
+
+        async function showAddRule() {
+            if (!hnData.selectedAppId) { alert('Select an app/site first'); return; }
+            const type = prompt('Rule type: domain or ip', 'domain');
+            const value = prompt('Enter domain or IP');
+            if (!value) return;
+            await createRuleAPI({ app_id: hnData.selectedAppId, type: (type === 'ip' ? 'ip' : 'domain'), value });
+            await fetchRules(); renderRules();
+        }
+        async function editRule(id) {
+            const r = hnData.rules.find(x => x.id === id); if (!r) return;
+            const value = prompt('Edit value', r.value); if (value === null) return;
+            await updateRuleAPI(id, { value });
+            await fetchRules(); renderRules();
+        }
+        async function deleteRule(id) {
+            if (!confirm('Delete rule?')) return;
+            await deleteRuleAPI(id);
+            await fetchRules(); renderRules();
+        }
         // Load devices data
         function loadDevices() {
             console.log('Loading devices...');
@@ -4241,10 +4637,10 @@
             console.log('Rendering devices table...');
             const tbody = document.getElementById('devices-table-body');
             if (!tbody) {
-                console.error('Devices table body not found');
-                    return;
-                }
-                
+                console.warn('devices-table-body not ready, retrying next frame');
+                return requestAnimationFrame(renderDevicesTable);
+            }
+
             tbody.innerHTML = '';
 
             devicesData.devices.forEach(device => {
@@ -4560,6 +4956,9 @@
                         </div>
                     </td>
                 `;
+                const qa = document.createElement('td');
+                qa.innerHTML = `<div class="quick-actions"><span class="quick-action" onclick="event.stopPropagation(); quickAddRule('${session.app}', '${session.category}', '${session.deviceIp}', '${session.hostname || ''}')">Add rule</span></div>`;
+                row.appendChild(qa);
                 tbody.appendChild(row);
             });
         }
@@ -4744,6 +5143,46 @@
             
             // Reload traffic sessions
             loadDeviceTrafficSessions(deviceId);
+        }
+
+        // ========================================
+        // QUICK ADD RULE (from session rows)
+        // ========================================
+        async function quickAddRule(appName, categoryName, ip, hostname) {
+            try {
+                await hnBootstrap();
+                await fetchCategories();
+                // Category
+                let category = hnData.categories.find(c => c.name.toLowerCase() === (categoryName||'').toLowerCase());
+                if (!category) {
+                    category = await createCategoryAPI({ name: categoryName || 'Uncategorized' });
+                    await fetchCategories();
+                }
+                const categoryId = category.id || (hnData.categories.find(c => c.name === category.name)?.id);
+                // App
+                hnData.selectedCategoryId = categoryId;
+                await fetchApps();
+                let app = hnData.apps.find(a => a.name.toLowerCase() === (appName||'').toLowerCase());
+                if (!app) {
+                    app = await createAppAPI({ category_id: categoryId, name: appName || (hostname||ip||'Unknown') });
+                    await fetchApps();
+                }
+                const appId = app.id || (hnData.apps.find(a => a.name === app.name)?.id);
+                // Rule
+                const isDomain = hostname && hostname.includes('.') && !/^[0-9.]+$/.test(hostname);
+                await createRuleAPI({ app_id: appId, type: isDomain ? 'domain' : 'ip', value: isDomain ? hostname : ip });
+                // Navigate to Rules tab and focus context
+                showSection('rules');
+                hnData.selectedCategoryId = categoryId;
+                await fetchApps();
+                hnData.selectedAppId = appId;
+                await fetchRules();
+                renderCategories(); renderApps(); renderRules();
+                alert('Rule added successfully in Rules tab');
+            } catch (e) {
+                console.error('quickAddRule error', e);
+                alert('Could not add rule');
+            }
         }
 
         // ========================================
