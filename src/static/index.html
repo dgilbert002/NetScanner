@@ -2126,12 +2126,21 @@
                         <span class="badge" id="rules-badge" style="display:none;">0</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="#settings" class="nav-link" onclick="showSection('settings')">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19.14,12.94a7.43,7.43,0,0,0,.06-1,7.43,7.43,0,0,0-.06-1l2.11-1.65a.5.5,0,0,0,.12-.64l-2-3.46a.5.5,0,0,0-.6-.22l-2.49,1a7.28,7.28,0,0,0-1.73-1L14.5,2.5a.5.5,0,0,0-.5-.5H10a.5.5,0,0,0-.5.5L9,4.97a7.28,7.28,0,0,0-1.73,1l-2.49-1a.5.5,0,0,0-.6.22l-2,3.46a.5.5,0,0,0,.12.64L4.38,9.94a7.43,7.43,0,0,0-.06,1,7.43,7.43,0,0,0,.06,1L2.27,13.59a.5.5,0,0,0-.12.64l2,3.46a.5.5,0,0,0,.6.22l2.49-1a7.28,7.28,0,0,0,1.73,1l.5,2.47a.5.5,0,0,0,.5.5h4a.5.5,0,0,0,.5-.5l.5-2.47a7.28,7.28,0,0,0,1.73-1l2.49,1a.5.5,0,0,0,.6-.22l2-3.46a.5.5,0,0,0-.12-.64Z"/>
+                        </svg>
+                        <span>Settings</span>
+                    </a>
+                </li>
             </ul>
         </nav>
     </aside>
 
     <!-- Main Content -->
     <main class="main-content" id="main-content">
+        <div id="demo-banner" style="display:none;background:#ffe5e5;color:#b00020;padding:8px 16px;text-align:center;font-weight:700;letter-spacing:0.5px;">DEMO MODE — Showing sample data</div>
         <div class="dashboard-content">
             <!-- Home Section -->
             <div id="home-section" class="tab-content active">
@@ -2445,6 +2454,33 @@
                     </div>
                 </div>
             </div>
+
+            <div id="settings-section" class="tab-content">
+                <div class="hostnames-container">
+                    <div class="hn-panel">
+                        <div class="hn-panel-header">
+                            <h3>Session & Classification Settings</h3>
+                        </div>
+                        <div class="hn-panel-body">
+                            <div class="form-group" style="margin-bottom:12px;">
+                                <label>Session idle close threshold (seconds)</label>
+                                <input id="set-idle" type="number" min="10" step="5" value="90" style="width:140px;">
+                                <span class="hint">Close a session if no packets seen after this idle period.</span>
+                            </div>
+                            <div class="form-group" style="margin-bottom:12px;">
+                                <label>nDPI usage</label>
+                                <select id="set-ndpi" style="width:180px;">
+                                    <option value="off">Off</option>
+                                    <option value="fallback">Fallback (only if no rule found)</option>
+                                    <option value="on">On (always consult)</option>
+                                </select>
+                            </div>
+                            <button class="btn" onclick="saveSettings()">Save</button>
+                            <span id="set-status" style="margin-left:10px;color:var(--gray);"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
     </div>
     </main>
 
@@ -2532,17 +2568,44 @@
         };
 
         // Initialize Live tab data - SAMPLE DATA ONLY
-        function initializeLiveData() {
-            // TODO: Replace with real API calls to get profiles, categories, apps, and sessions
-            console.log('Initializing Live tab with sample data');
-            console.log('Live data profiles:', liveData.profiles);
-            
-            // Generate sample session data (100 rows with random dates)
-            liveData.sessions = generateSampleSessions();
-            liveData.alertCount = Math.floor(Math.random() * 5); // Sample alert count
-            
-            console.log('Generated sessions:', liveData.sessions.length);
-            
+        async function initializeLiveData() {
+            // Try real API first
+            let usedDemo = false;
+            try {
+                const res = await fetch('/api/live/sessions?hours=1');
+                const data = await res.json();
+                if (data && Array.isArray(data.sessions) && data.sessions.length > 0) {
+                    // Map to current structure
+                    liveData.sessions = data.sessions.map(s => ({
+                        device: s.device,
+                        deviceIp: s.deviceIp,
+                        category: s.category,
+                        categoryId: s.categoryId,
+                        app: s.app,
+                        appId: s.appId,
+                        startTime: s.startTime,
+                        lastSeen: s.lastSeen,
+                        duration: s.duration,
+                        dataBytes: s.dataBytes,
+                        isActive: s.isActive,
+                        hostname: s.hostname || null,
+                        dstIp: s.dstIp || null,
+                    }));
+                } else {
+                    usedDemo = true;
+                }
+            } catch (e) {
+                usedDemo = true;
+            }
+
+            if (usedDemo) {
+                liveData.sessions = generateSampleSessions();
+            }
+
+            // Banner
+            const banner = document.getElementById('demo-banner');
+            if (banner) banner.style.display = usedDemo ? 'block' : 'none';
+
             // Load all components
             loadLiveProfiles();
             loadTimeFilters();
@@ -2673,7 +2736,7 @@
             const index = liveData.filters.profiles.indexOf(profileId);
             if (index > -1) {
                 liveData.filters.profiles.splice(index, 1);
-            } else {
+                } else {
                 liveData.filters.profiles.push(profileId);
             }
             
@@ -2787,7 +2850,7 @@
             const index = liveData.filters.apps.indexOf(appId);
             if (index > -1) {
                 liveData.filters.apps.splice(index, 1);
-            } else {
+                } else {
                 liveData.filters.apps.push(appId);
             }
             
@@ -3003,8 +3066,8 @@
             const tbody = document.getElementById('traffic-tbody');
             if (!tbody) {
                 console.error('traffic-tbody not found');
-                return;
-            }
+                    return;
+                }
             tbody.innerHTML = '';
             
             // Apply time range filter
@@ -3122,21 +3185,24 @@
 
         function createSessionRow(session) {
             const row = document.createElement('tr');
+            const hostOrIp = session.hostname || session.dstIp || session.deviceIp || '';
+            const isUnknown = (!session.category || session.category === 'Uncategorized' || !session.app || session.app === 'Unknown');
+            const accessingLabel = isUnknown ? (hostOrIp || 'Unknown') : session.app;
             row.innerHTML = `
                 <td class="clickable-cell" onclick="filterByValue('device', '${session.deviceIp}')">
-                    <div class="device-info">
+                        <div class="device-info">
                         <div class="device-name">${session.device}</div>
                         <div class="device-ip">${session.deviceIp}</div>
-                    </div>
+                            </div>
                 </td>
                 <td class="clickable-cell" onclick="filterByValue('category', '${session.categoryId}')">
                     <span class="category-badge category-${session.categoryId}">${session.category}</span>
                 </td>
                 <td class="clickable-cell" onclick="filterByValue('app', '${session.appId}')">
                     <div class="accessing-info">
-                        <div class="accessing-app">${session.app}</div>
+                        <div class="accessing-app">${accessingLabel}</div>
                         <div class="accessing-time">${formatTime(session.startTime)}</div>
-                    </div>
+                        </div>
                 </td>
                 <td>
                     <div class="duration-info">${formatDuration(session.duration)}</div>
@@ -3151,11 +3217,8 @@
                     </div>
                 </td>
             `;
-            // Quick action cell for rule add (append after status)
             const qa = document.createElement('td');
-            qa.innerHTML = `<div class="quick-actions"><span class="quick-action" onclick="event.stopPropagation(); quickAddRule('${session.app}', '${session.category}', '${session.deviceIp}', '${session.hostname || ''}')">Add rule</span></div>`;
-            // some tables may not include this column in header, but we can append to row to keep action available
-            // If you prefer a fixed column, add a header TH and styling.
+            qa.innerHTML = `<div class="quick-actions"><span class="quick-action" onclick="event.stopPropagation(); quickAddRule('${session.app}', '${session.category}', '${session.dstIp || ''}', '${session.hostname || ''}')">Add rule</span></div>`;
             row.appendChild(qa);
             return row;
         }
@@ -3419,6 +3482,10 @@
                     if (!window.__loaded_rules) { window.__loaded_rules = true; }
                     loadHostnamesData();
                     break;
+                case 'settings':
+                    if (!window.__loaded_settings) { window.__loaded_settings = true; loadSettings(); }
+                    loadSettings();
+                    break;
             }
 
             // Ensure add button visibility is only on Home
@@ -3531,7 +3598,7 @@
                     <div class="profile-info">
                         <h3>${profile.name}</h3>
                         <p>${profile.description || 'Family Member'}</p>
-                            </div>
+                    </div>
                         </div>
                 <div class="profile-stats">
                     <div class="stat-item">
@@ -4205,7 +4272,14 @@
         }
 
         function startAutoRefresh() {
-            // Auto-refresh home data every 30 seconds
+            // Auto-refresh Live sessions every 3 seconds; Home every 30 seconds
+            setInterval(() => {
+                if (currentSection === 'live') {
+                    // Re-fetch live data quickly
+                    initializeLiveData();
+                }
+            }, 3000);
+
             setInterval(() => {
                 if (currentSection === 'home') {
                     loadProfiles();
@@ -4286,9 +4360,34 @@
         };
 
         // Initialize devices section
-        function initializeDevices() {
+        async function initializeDevices() {
             console.log('Initializing devices section...');
-            loadDevices();
+            let usedDemo = false;
+            try {
+                const res = await fetch('/api/devices');
+                const data = await res.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    devicesData.devices = data.map(d => ({
+                        id: d.id || 0,
+                        name: d.hostname || '',
+                        ip: d.ip_address || '',
+                        mac: d.mac_address || '',
+                        manufacturer: d.vendor || '',
+                        status: d.is_active ? 'online' : 'offline',
+                        lastSeen: d.last_seen ? new Date(d.last_seen) : new Date()
+                    }));
+                } else {
+                    usedDemo = true;
+                }
+            } catch (e) {
+                usedDemo = true;
+            }
+
+            if (usedDemo) {
+                loadDevices(); // generate sample and render
+                } else {
+                renderDevicesTable();
+            }
         }
 
         // ========================================
@@ -4309,6 +4408,7 @@
         };
 
         const HN_API = '/api/hostnames';
+        const SETTINGS_API = '/api/settings';
 
         async function hnBootstrap() {
             try {
@@ -4410,6 +4510,40 @@
             (hnData.rules || []).forEach(r => { if ((unkApp && r.app_id === unkApp.id) || uncAppIds.has(r.app_id)) count++; });
             if (count > 0) { rulesBadge.style.display = 'inline-block'; rulesBadge.textContent = String(count); }
             else { rulesBadge.style.display = 'none'; rulesBadge.textContent = '0'; }
+        }
+
+        // ---------- Settings ----------
+        async function loadSettings() {
+            try {
+                const res = await fetch(SETTINGS_API);
+                const s = await res.json();
+                const idle = document.getElementById('set-idle');
+                const ndpi = document.getElementById('set-ndpi');
+                if (idle) idle.value = s.session_idle_seconds || 90;
+                if (ndpi) ndpi.value = s.ndpi_mode || 'fallback';
+                const st = document.getElementById('set-status');
+                if (st) st.textContent = '';
+            } catch (e) {
+                console.warn('loadSettings failed', e);
+            }
+        }
+
+        async function saveSettings() {
+            try {
+                const idle = parseInt(document.getElementById('set-idle').value, 10) || 90;
+                const ndpi = document.getElementById('set-ndpi').value || 'fallback';
+                const res = await fetch(SETTINGS_API, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_idle_seconds: idle, ndpi_mode: ndpi })
+                });
+                const s = await res.json();
+                const st = document.getElementById('set-status');
+                if (st) st.textContent = 'Saved';
+                setTimeout(() => { if (st) st.textContent = ''; }, 1500);
+            } catch (e) {
+                const st = document.getElementById('set-status');
+                if (st) st.textContent = 'Save failed';
+            }
         }
 
         function renderCategories() {
@@ -4643,10 +4777,10 @@
 
             tbody.innerHTML = '';
 
-            devicesData.devices.forEach(device => {
+            devicesData.devices.forEach((device, idx) => {
                 const row = document.createElement('tr');
                 row.className = 'clickable-row';
-                row.onclick = () => toggleDeviceExpander(device.id);
+                row.onclick = () => toggleDeviceExpander(idx);
                 row.innerHTML = `
                     <td>
                         <div class="device-info">
@@ -4697,7 +4831,7 @@
                     renderDevicesTable();
                     return;
                 }
-            } else {
+                } else {
                 devicesData.sortColumn = column;
                 devicesData.sortDirection = 'asc';
             }
@@ -4745,10 +4879,10 @@
         }
 
         // Toggle device expander
-        function toggleDeviceExpander(deviceId) {
-            console.log(`Toggling device expander for device ID: ${deviceId}`);
+        async function toggleDeviceExpander(deviceIdx) {
+            console.log(`Toggling device expander for device index: ${deviceIdx}`);
             
-            const device = devicesData.devices.find(d => d.id === deviceId);
+            const device = devicesData.devices[deviceIdx];
             if (!device) {
                 console.error('Device not found');
                 return;
@@ -4759,16 +4893,16 @@
 
             // Check if this device is already expanded
             const isCurrentlyExpanded = expander.style.display !== 'none' && 
-                                      expander.dataset.deviceId == deviceId;
+                                      expander.dataset.deviceIdx == String(deviceIdx);
 
             if (isCurrentlyExpanded) {
                 // Hide expander
                 expander.style.display = 'none';
-                expander.dataset.deviceId = '';
+                expander.dataset.deviceIdx = '';
             } else {
                 // Show expander for this device
                 expander.style.display = 'block';
-                expander.dataset.deviceId = deviceId;
+                expander.dataset.deviceIdx = String(deviceIdx);
 
                 // Set friendly name input
                 const nameInput = document.getElementById('device-friendly-name');
@@ -4786,8 +4920,40 @@
                     alerts: false
                 };
 
-                // Load device traffic sessions
-                loadDeviceTrafficSessions(deviceId);
+                // Load device traffic sessions from backend if available
+                try {
+                    let mac = device.mac;
+                    if (!mac && device.ip) {
+                        // fallback: try to find device by IP in backend later if needed
+                    }
+                    if (mac) {
+                        const res = await fetch(`/api/traffic/devices/${encodeURIComponent(mac)}?hours=24`);
+                        const data = await res.json();
+                        if (Array.isArray(data)) {
+                            deviceTrafficData.sessions = data.map(s => ({
+                                device: device.name || device.ip || mac,
+                                deviceIp: s.src_ip || device.ip || '',
+                                category: s.category || 'Uncategorized',
+                                categoryId: s.category_id || 0,
+                                app: s.app || s.hostname || s.dst_ip || 'Unknown',
+                                appId: s.app_id || 0,
+                                startTime: s.start_time,
+                                endTime: s.end_time,
+                                duration: Math.max(1, Math.floor(((new Date(s.end_time || Date.now())) - (new Date(s.start_time))) / 60000)),
+                                dataBytes: (s.bytes_sent || 0) + (s.bytes_received || 0),
+                                isActive: !s.end_time
+                            }));
+                        } else {
+                            // Fallback to sample
+                            loadDeviceTrafficSessions(deviceIdx);
+                        }
+                    } else {
+                        loadDeviceTrafficSessions(deviceIdx);
+                    }
+                } catch (e) {
+                    console.warn('device sessions fetch failed, fallback to sample', e);
+                    loadDeviceTrafficSessions(deviceIdx);
+                }
             }
         }
 
@@ -4833,11 +4999,11 @@
         }
 
         // Load device traffic sessions
-        function loadDeviceTrafficSessions(deviceId) {
-            console.log(`Loading traffic sessions for device ID: ${deviceId}`);
+        function loadDeviceTrafficSessions(deviceIdx) {
+            console.log(`Loading traffic sessions for device index: ${deviceIdx}`);
             
             // Generate sample traffic sessions for this device
-            const device = devicesData.devices.find(d => d.id === deviceId);
+            const device = devicesData.devices[deviceIdx];
             if (!device) return;
 
             const sampleSessions = [
@@ -5044,7 +5210,7 @@
             const expander = document.getElementById('device-expander');
             if (expander) {
                 expander.style.display = 'none';
-                expander.dataset.deviceId = '';
+                expander.dataset.deviceIdx = '';
             }
         }
 
@@ -5068,14 +5234,14 @@
             if (!nameInput) return;
 
             const expander = document.getElementById('device-expander');
-            if (!expander || !expander.dataset.deviceId) return;
+            if (!expander || !expander.dataset.deviceIdx) return;
 
-            const deviceId = parseInt(expander.dataset.deviceId);
-            const device = devicesData.devices.find(d => d.id === deviceId);
+            const deviceIdx = parseInt(expander.dataset.deviceIdx);
+            const device = devicesData.devices[deviceIdx];
             if (!device) return;
 
             const newName = nameInput.value.trim();
-            console.log(`Saving device name: ${newName} for device ID: ${deviceId}`);
+            console.log(`Saving device name: ${newName} for device index: ${deviceIdx}`);
             
             // Update device name
             device.name = newName;
@@ -5114,14 +5280,14 @@
             // Update device traffic data
             deviceTrafficData.timeRange = timeRange;
             
-            // Get current device ID from expander
+            // Get current device index from expander
             const expander = document.getElementById('device-expander');
-            if (!expander || !expander.dataset.deviceId) return;
+            if (!expander || !expander.dataset.deviceIdx) return;
             
-            const deviceId = parseInt(expander.dataset.deviceId);
+            const deviceIdx = parseInt(expander.dataset.deviceIdx);
             
             // Reload traffic sessions
-            loadDeviceTrafficSessions(deviceId);
+            loadDeviceTrafficSessions(deviceIdx);
         }
 
         function toggleDeviceAlertFilter() {
@@ -5135,14 +5301,14 @@
                 badge.classList.toggle('active', deviceTrafficData.alerts);
             }
             
-            // Get current device ID from expander
+            // Get current device index from expander
             const expander = document.getElementById('device-expander');
-            if (!expander || !expander.dataset.deviceId) return;
+            if (!expander || !expander.dataset.deviceIdx) return;
             
-            const deviceId = parseInt(expander.dataset.deviceId);
+            const deviceIdx = parseInt(expander.dataset.deviceIdx);
             
             // Reload traffic sessions
-            loadDeviceTrafficSessions(deviceId);
+            loadDeviceTrafficSessions(deviceIdx);
         }
 
         // ========================================

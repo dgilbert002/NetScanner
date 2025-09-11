@@ -357,6 +357,10 @@ Session = {
     isActive: true,
     dataBytes: 15728640, // bytes
     lastSeen: "2024-01-15T14:25:00Z",
+    // Enrichment fields
+    hostname: "google.com",
+    organization: "Google LLC",
+    asn: 15169,
     hasAlert: false
 }
 ```
@@ -601,6 +605,27 @@ function updateAddButtonVisibility() {
 - **App Detection**: Identify applications from network traffic
 - **Time Tracking**: Measure session durations
 - **Category Classification**: Group apps into categories
+
+### 9.1.1 Enrichment Pipeline (Immediate Lookups, Cached)
+- **Goal**: Resolve destination IP to hostname and ownership for classification and readability.
+- **Sources**:
+  - DNS/SNI observed during capture (preferred)
+  - Reverse DNS (PTR) fallback
+  - RDAP whois via `ipwhois` for `organization` and `asn`
+- **Storage**: `enriched_data` table with fields `ip_address`, `hostname`, `organization`, `asn`, `isp`, `updated_at`.
+- **Behavior**:
+  - On first sight of an unknown IP, enqueue immediate enrichment (no waiting 24h).
+  - On success, cache and set `updated_at`. Next refresh allowed after TTL (24h default).
+  - On failure, retry with backoff: 60s → 5m → 30m (cap). Backoff is per‑IP.
+  - User Rules always override enrichment for `category/app`.
+- **Optional nDPI** (Settings: Off / Fallback / On): If enabled, use nDPI labels when DNS/SNI is missing to suggest `app/category` (rules still override).
+
+### 9.1.2 3‑Second Server Logger
+- Runs every 3 seconds; prints recent sessions with:
+  - timestamp, `src_ip` → `dst_ip`, protocol:port, total bytes, active flag
+  - plus `org`, `asn`, `host` from `enriched_data` when available
+- Example: `[SESSION_LOG] … -> 142.250.72.14 HTTPS:443 bytes=12345 active=False org=Google LLC asn=AS15169 host=google.com`
+- Unknowns are enqueued once for immediate enrichment; subsequent cycles will show enriched data.
 
 ### 9.2 Behavioral Analysis
 **Usage Patterns**:
@@ -876,3 +901,168 @@ This documentation serves as the foundation for integrating live network monitor
 
 ### 13.6 Logging
 - Each endpoint logs the function name, parameters, and return status to aid troubleshooting.
+
+## 14. Devices Tab – Finalized Layout & Behavior
+
+### 14.1 Columns and Semantics
+- **Device**: friendly name (may be blank), then IP and MAC underneath in smaller monospace.
+- **Manufacturer**: vendor/manufacturer string if known.
+- **Status**: Active (pulsing green) or Offline · Last seen X ago.
+- Clicking a row toggles an inline expander with time range filters, alert badge, and a traffic table (same sort rules as Live).
+
+### 14.2 Sorting
+- Three-state sort per column (↕/↑/↓). Third click clears sort to unsorted.
+- Indicators mirror Live table visuals.
+
+### 14.3 Expander (Details)
+- Friendly name input with clear (×); blur or Enter saves and updates the row.
+- Time ranges: 15 min, 1 hour, 2 hours, Today.
+- Alert toggle filters expander’s sessions.
+- Traffic sessions table copies Live columns; sortable; includes quick “Add rule”.
+
+### 14.4 Dummy Data and Resilience
+- If backend data isn’t ready, the Devices tab renders sample devices.
+- Rendering waits for containers to be present; if not ready (e.g., on refresh), it retries on the next animation frame to avoid empty tables.
+
+## 15. Live Tab – Classification & Quick Rules
+
+### 15.1 Auto Classification
+- While rendering rows, if category/app are unknown, UI POSTs to `/api/network/classify` with `{ hostname|sni|ip }` and displays `{ category, app }`.
+- Manual rules always override.
+
+### 15.2 Quick Add Rule
+- Each row exposes “Add rule”, which:
+  1) Ensures defaults exist
+  2) Finds/creates the Category and App/Site
+  3) Adds a domain rule (if hostname) or IP rule
+  4) Navigates to Rules tab and focuses the affected Category/App
+
+## 16. Rules Tab – Unified Rules Manager
+
+### 16.1 Structure
+- Three panels:
+  - Categories: add/edit/delete; selecting filters Apps
+  - Apps & Sites: add/edit/delete; selecting filters Rules
+  - Match Rules: add/edit/delete domain or IP rules tied to the selected App/Site
+
+### 16.2 Badge
+- Rules menu badge shows count of rules tied to `Unknown` app or to apps under `Uncategorized` to prioritize clean-up.
+
+### 16.3 API (no keys required)
+- `POST /api/hostnames/bootstrap` – ensure defaults exist
+- `GET/POST/PUT/DELETE /api/hostnames/categories`
+- `GET/POST/PUT/DELETE /api/hostnames/apps`
+- `GET/POST/PUT/DELETE /api/hostnames/rules`
+- `POST /api/network/classify` – rule-first DNS/SNI/IP classification
+
+### 16.4 Data Model
+- `hn_categories(id, name, description, is_system, created_at, updated_at)`
+- `hn_apps(id, category_id, name, slug, is_system, created_at, updated_at)`
+- `hn_rules(id, app_id, type[domain|ip|cidr|sni|regex], value, source[manual|auto|ndpi], confidence, created_at, updated_at)`
+- Defaults auto-created: `Uncategorized` and `Unknown`.
+
+## 17. Navigation & State Persistence
+
+### 17.1 Hash + Local Storage
+- Active tab is stored in URL hash (e.g., `#live`, `#devices`, `#rules`) and in localStorage as `currentSection`.
+- On load/refresh, app prefers hash; else uses `currentSection`; else falls back to `home`.
+- Back/forward navigation updates the UI (hashchange listener). Programmatic `showSection()` updates hash for deep links.
+
+### 17.2 Robust Activation
+- `showSection()` safely resolves nav links and section elements; normalizes legacy names (`hostnames` → `rules`) and falls back to `home` if needed.
+- Section data loaders run on each switch; basic guards prevent duplicate handler attachment.
+
+---
+
+## 18. Developer Notes – API Examples (no keys required)
+
+Replace `127.0.0.1:5002` with your server’s host/IP (e.g., the Raspberry Pi).
+
+### 18.1 Bootstrap defaults
+```bash
+curl -s -X POST http://127.0.0.1:5002/api/hostnames/bootstrap
+```
+
+### 18.2 Categories
+Create:
+```bash
+curl -s -X POST http://127.0.0.1:5002/api/hostnames/categories \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Social Media"}'
+```
+List:
+```bash
+curl -s http://127.0.0.1:5002/api/hostnames/categories
+```
+Update:
+```bash
+curl -s -X PUT http://127.0.0.1:5002/api/hostnames/categories/1 \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Entertainment"}'
+```
+Delete:
+```bash
+curl -s -X DELETE http://127.0.0.1:5002/api/hostnames/categories/1
+```
+
+### 18.3 Apps & Sites
+Create (under category_id=1):
+```bash
+curl -s -X POST http://127.0.0.1:5002/api/hostnames/apps \
+  -H "Content-Type: application/json" \
+  -d '{"category_id":1, "name":"Instagram"}'
+```
+List (optionally filter by category_id):
+```bash
+curl -s http://127.0.0.1:5002/api/hostnames/apps?category_id=1
+```
+Update:
+```bash
+curl -s -X PUT http://127.0.0.1:5002/api/hostnames/apps/1 \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Instagram Mobile"}'
+```
+Delete:
+```bash
+curl -s -X DELETE http://127.0.0.1:5002/api/hostnames/apps/1
+```
+
+### 18.4 Match Rules
+Create domain rule (app_id=1):
+```bash
+curl -s -X POST http://127.0.0.1:5002/api/hostnames/rules \
+  -H "Content-Type: application/json" \
+  -d '{"app_id":1, "type":"domain", "value":"instagram.com"}'
+```
+Create IP rule:
+```bash
+curl -s -X POST http://127.0.0.1:5002/api/hostnames/rules \
+  -H "Content-Type: application/json" \
+  -d '{"app_id":1, "type":"ip", "value":"151.101.1.140"}'
+```
+List (optionally filter by app_id):
+```bash
+curl -s http://127.0.0.1:5002/api/hostnames/rules?app_id=1
+```
+Update:
+```bash
+curl -s -X PUT http://127.0.0.1:5002/api/hostnames/rules/1 \
+  -H "Content-Type: application/json" \
+  -d '{"value":"instagram-cdn.com"}'
+```
+Delete:
+```bash
+curl -s -X DELETE http://127.0.0.1:5002/api/hostnames/rules/1
+```
+
+### 18.5 Classifier
+DNS/SNI/IP classification (rule-first):
+```bash
+curl -s -X POST http://127.0.0.1:5002/api/network/classify \
+  -H "Content-Type: application/json" \
+  -d '{"hostname":"instagram.com"}'
+```
+Response:
+```json
+{ "category":"Social Media", "app":"Instagram", "rule_source":"manual", "confidence":1.0 }
+```

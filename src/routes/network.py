@@ -1,5 +1,10 @@
 from flask import Blueprint, jsonify, request
+from datetime import datetime, timedelta
 from src.models.network import Device, TrafficSession, EnrichedData, WebsiteVisit, NetworkStats, db
+try:
+    from src.models.settings import AppSettings
+except Exception:
+    AppSettings = None
 from src.models.hostnames import HnCategory, HnApp, HnRule, bootstrap_defaults
 import tldextract
 from src.packet_capture import NetworkMonitor
@@ -23,10 +28,21 @@ def get_network_monitor():
 
 @network_bp.route('/devices', methods=['GET'])
 def get_devices():
-    """Get all discovered devices"""
+    """Get all discovered devices for Devices tab."""
     try:
         devices = Device.query.all()
-        return jsonify([device.to_dict() for device in devices])
+        rows = []
+        for d in devices:
+            rows.append({
+                'id': getattr(d, 'id', None),
+                'mac_address': getattr(d, 'mac_address', None),
+                'ip_address': getattr(d, 'ip_address', None),
+                'hostname': getattr(d, 'hostname', None),
+                'vendor': getattr(d, 'vendor', None),
+                'last_seen': (getattr(d, 'last_seen', None).isoformat() if getattr(d, 'last_seen', None) else None),
+                'is_active': bool(getattr(d, 'is_active', False)),
+            })
+        return jsonify(rows)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -199,6 +215,160 @@ def classify_flow():
         'rule_source': 'fallback',
         'confidence': 0.2
     })
+
+
+def _classify_for_endpoint(hostname: str, ip: str):
+    """Internal helper to classify quickly and return names and ids."""
+    bootstrap_defaults()
+    cat_name = 'Uncategorized'
+    app_name = 'Unknown'
+    cat_id = None
+    app_id = None
+
+    # Domain rules
+    if hostname:
+        host = hostname.lower()
+        root = _extract_root_domain(host)
+        rule = HnRule.query.filter_by(type='domain', value=host).first()
+        if not rule and root and root != host:
+            rule = HnRule.query.filter_by(type='domain', value=root).first()
+        if rule:
+            app = HnApp.query.get(rule.app_id)
+            cat = HnCategory.query.get(app.category_id) if app else None
+            if app:
+                app_id, app_name = app.id, app.name
+            if cat:
+                cat_id, cat_name = cat.id, cat.name
+            return cat_name, app_name, cat_id, app_id
+
+    # IP rules
+    if ip:
+        rule = HnRule.query.filter_by(type='ip', value=ip).first()
+        if rule:
+            app = HnApp.query.get(rule.app_id)
+            cat = HnCategory.query.get(app.category_id) if app else None
+            if app:
+                app_id, app_name = app.id, app.name
+            if cat:
+                cat_id, cat_name = cat.id, cat.name
+            return cat_name, app_name, cat_id, app_id
+
+    # Fallback
+    cat = HnCategory.query.filter_by(name='Uncategorized').first()
+    app = HnApp.query.filter_by(name='Unknown').first()
+    if cat: cat_id = cat.id
+    if app: app_id = app.id
+    return cat_name, app_name, cat_id, app_id
+
+
+@network_bp.route('/live/sessions', methods=['GET'])
+def live_sessions():
+    """Return recent sessions shaped for the Live table.
+    Does minimal shaping; client performs filtering/sorting.
+    """
+    try:
+        # timeframe: last 24h by default
+        hours = request.args.get('hours', 24, type=int)
+        since = datetime.utcnow() - timedelta(hours=hours)
+
+        q = TrafficSession.query.filter(TrafficSession.start_time >= since)
+        q = q.order_by(TrafficSession.start_time.desc())
+        sessions = q.limit(200).all()
+
+        rows = []
+        now = datetime.utcnow()
+        idle_seconds = 90
+        try:
+            if AppSettings is not None:
+                idle_seconds = AppSettings.get_or_create_defaults().session_idle_seconds or 90
+        except Exception:
+            pass
+
+        for s in sessions:
+            # Device friendly name
+            dev = Device.query.filter_by(mac_address=s.src_mac).first()
+            device_name = dev.hostname if dev and getattr(dev, 'hostname', None) else (s.src_ip or s.src_mac)
+            device_ip = s.src_ip or ''
+
+            # Destination enrichment
+            enr = EnrichedData.query.filter_by(ip_address=s.dst_ip).first()
+            hostname = enr.hostname if enr and enr.hostname else None
+            organization = enr.organization if enr and getattr(enr, 'organization', None) else None
+            asn = enr.asn if enr and getattr(enr, 'asn', None) else None
+            root_domain = _extract_root_domain(hostname) if hostname else ''
+
+            # Classify
+            cat_name, app_name, cat_id, app_id = _classify_for_endpoint(hostname, s.dst_ip or '')
+
+            # Duration and status (treat end_time as last_activity marker)
+            last_seen_dt = (s.end_time or s.start_time or now)
+            is_active = ((now - last_seen_dt).total_seconds() <= idle_seconds)
+            duration_minutes = int(((last_seen_dt) - (s.start_time or last_seen_dt)).total_seconds() // 60)
+            data_bytes = int((s.bytes_sent or 0) + (s.bytes_received or 0))
+
+            # nDPI labels (if enabled) with fallback classifier
+            ndpi_app = None
+            ndpi_category = None
+            ndpi_confidence = None
+            try:
+                # Try nDPI first
+                from src.main import ndpi_worker
+                if ndpi_worker and ndpi_worker.enabled:
+                    lbl = ndpi_worker.get_label(s.src_ip, s.dst_ip, s.dst_port, s.protocol)
+                    if lbl:
+                        ndpi_app = lbl.get('app')
+                        ndpi_category = lbl.get('category')
+                        ndpi_confidence = lbl.get('confidence')
+                
+                # Fallback to traffic classifier if no nDPI results
+                if not ndpi_app or not ndpi_category:
+                    from src.traffic_classifier import TrafficClassifier
+                    classification = TrafficClassifier.classify(
+                        dst_ip=s.dst_ip,
+                        dst_port=s.dst_port,
+                        hostname=hostname if hostname else None,
+                        protocol=s.protocol
+                    )
+                    if classification:
+                        if not ndpi_app:
+                            ndpi_app = classification.get('app')
+                        if not ndpi_category:
+                            ndpi_category = classification.get('category')
+                        if not ndpi_confidence:
+                            ndpi_confidence = classification.get('confidence')
+            except Exception:
+                pass
+
+            rows.append({
+                'device': device_name,
+                'deviceIp': device_ip,
+                'dstIp': s.dst_ip or '',
+                'hostname': hostname or None,
+                'organization': organization,
+                'asn': asn,
+                'countryCode': getattr(enr, 'country_code', None) if enr else None,
+                'protocol': s.protocol,
+                'srcPort': s.src_port,
+                'dstPort': s.dst_port,
+                'rootDomain': root_domain,
+                'isEncrypted': bool((s.dst_port or 0) == 443),
+                'ndpi_app': ndpi_app,
+                'ndpi_category': ndpi_category,
+                'ndpi_confidence': ndpi_confidence,
+                'category': cat_name,
+                'categoryId': cat_id or 0,
+                'app': app_name,
+                'appId': app_id or 0,
+                'startTime': (s.start_time or now).isoformat(),
+                'lastSeen': last_seen_dt.isoformat(),
+                'duration': duration_minutes,
+                'dataBytes': data_bytes,
+                'isActive': bool(is_active)
+            })
+
+        return jsonify({'sessions': rows, 'count': len(rows), 'timestamp': now.isoformat()})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @network_bp.route('/websites/top-domains', methods=['GET'])
 def get_top_domains():

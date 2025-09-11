@@ -3,7 +3,7 @@ Cross-platform packet capture system for Windows and Raspberry Pi
 Integrates all capture methods with full feature support
 """
 
-import platform
+import platform as py_platform
 import os
 import sys
 import logging
@@ -15,6 +15,7 @@ import socket
 from datetime import datetime, timedelta
 from collections import defaultdict
 import asyncio
+from contextlib import suppress
 
 # Import scapy for packet capture
 try:
@@ -26,6 +27,13 @@ try:
 except ImportError:
     SCAPY_AVAILABLE = False
     print("Warning: Scapy not available. Install with: pip install scapy")
+
+# Optional pyshark/tshark for capture
+try:
+    import pyshark  # Requires tshark installed
+    PYSHARK_AVAILABLE = True
+except Exception:
+    PYSHARK_AVAILABLE = False
 
 # Import database models with conditional enhanced features
 ENABLE_ENHANCED = os.getenv('ENABLE_ENHANCED', '0').lower() in ('1', 'true', 'yes')
@@ -54,12 +62,23 @@ else:
         pass
     class UserSession:
         pass
+try:
+    # Settings for session idle and nDPI mode
+    from src.models.settings import AppSettings
+except Exception:
+    AppSettings = None
+
+# Optional OUI vendor lookup (manuf)
+try:
+    from manuf import manuf as _manuf_mod
+except Exception:
+    _manuf_mod = None
 
 class CrossPlatformCapture:
     """Cross-platform packet capture that works on Windows and Linux/Raspberry Pi"""
     
     def __init__(self, interface=None, app_context=None):
-        self.platform = platform.system()
+        self.platform = py_platform.system()
         self.interface = interface or self._detect_interface()
         self.app_context = app_context
         self.running = False
@@ -83,6 +102,22 @@ class CrossPlatformCapture:
         
         self.logger = logging.getLogger(__name__)
         self.logger.info(f"Initialized cross-platform capture for {self.platform}")
+        # Cached settings
+        self._idle_seconds_cache = 90
+        try:
+            if AppSettings is not None:
+                self._idle_seconds_cache = AppSettings.get_or_create_defaults().session_idle_seconds or 90
+        except Exception:
+            pass
+        # Vendor lookup cache and parser
+        self._vendor_cache = {}
+        self._manuf_parser = None
+        if _manuf_mod is not None:
+            try:
+                # Do not auto-update; use packaged DB
+                self._manuf_parser = _manuf_mod.MacParser(update=False)
+            except Exception:
+                self._manuf_parser = None
         
     def _detect_interface(self):
         """Detect the best network interface based on platform"""
@@ -197,14 +232,32 @@ class CrossPlatformCapture:
             
         self.running = True
         self.stats['start_time'] = datetime.utcnow()
-        
-        if SCAPY_AVAILABLE and (self.platform == "Linux" or 
-                                (self.platform == "Windows" and self._check_npcap())):
-            # Use scapy for real packet capture
-            self.capture_thread = threading.Thread(target=self._scapy_capture_loop, daemon=True)
+
+        # Selection order:
+        # Linux (Pi): prefer pyshark+tshark, else scapy, else netstat
+        # Windows: scapy+Npcap, else pyshark+tshark, else netstat
+        # macOS: scapy if available, else pyshark, else netstat
+        if self.platform == "Linux":
+            if self._check_tshark() and PYSHARK_AVAILABLE:
+                self.capture_thread = threading.Thread(target=self._pyshark_capture_loop, daemon=True)
+            elif SCAPY_AVAILABLE:
+                self.capture_thread = threading.Thread(target=self._scapy_capture_loop, daemon=True)
+            else:
+                self.capture_thread = threading.Thread(target=self._netstat_capture_loop, daemon=True)
+        elif self.platform == "Windows":
+            if SCAPY_AVAILABLE and self._check_npcap():
+                self.capture_thread = threading.Thread(target=self._scapy_capture_loop, daemon=True)
+            elif self._check_tshark() and PYSHARK_AVAILABLE:
+                self.capture_thread = threading.Thread(target=self._pyshark_capture_loop, daemon=True)
+            else:
+                self.capture_thread = threading.Thread(target=self._netstat_capture_loop, daemon=True)
         else:
-            # Fallback to netstat monitoring
-            self.capture_thread = threading.Thread(target=self._netstat_capture_loop, daemon=True)
+            if SCAPY_AVAILABLE:
+                self.capture_thread = threading.Thread(target=self._scapy_capture_loop, daemon=True)
+            elif self._check_tshark() and PYSHARK_AVAILABLE:
+                self.capture_thread = threading.Thread(target=self._pyshark_capture_loop, daemon=True)
+            else:
+                self.capture_thread = threading.Thread(target=self._netstat_capture_loop, daemon=True)
             
         self.capture_thread.start()
         self.logger.info(f"Started capture on {self.interface} using {self.platform} method")
@@ -220,6 +273,14 @@ class CrossPlatformCapture:
             result = subprocess.run(['sc', 'query', 'npcap'], capture_output=True, text=True)
             return 'RUNNING' in result.stdout
         except:
+            return False
+
+    def _check_tshark(self):
+        """Check if tshark is installed and usable."""
+        try:
+            result = subprocess.run(['tshark', '-v'], capture_output=True, text=True, timeout=5)
+            return result.returncode == 0
+        except Exception:
             return False
             
     def _scapy_capture_loop(self):
@@ -341,6 +402,82 @@ class CrossPlatformCapture:
                 
         except Exception as e:
             self.logger.error(f"Error processing packet: {e}")
+
+    def _pyshark_capture_loop(self):
+        """Capture packets using pyshark (requires tshark)."""
+        with self.app_context.app_context() if self.app_context else nullcontext():
+            try:
+                self.logger.info("Starting pyshark packet capture")
+                capture = pyshark.LiveCapture(interface=self.interface)
+                for pkt in capture.sniff_continuously(packet_count=None):
+                    if not self.running:
+                        break
+                    try:
+                        # IP layer
+                        if not hasattr(pkt, 'ip'):
+                            continue
+                        src_ip = getattr(pkt.ip, 'src', None)
+                        dst_ip = getattr(pkt.ip, 'dst', None)
+                        if not (src_ip and dst_ip):
+                            continue
+                        # L4
+                        transport = getattr(pkt, 'transport_layer', None) or ''
+                        protocol_name = transport.upper() if transport else 'IP'
+                        src_port = 0
+                        dst_port = 0
+                        if transport == 'TCP' and hasattr(pkt, 'tcp'):
+                            src_port = int(getattr(pkt.tcp, 'srcport', 0) or 0)
+                            dst_port = int(getattr(pkt.tcp, 'dstport', 0) or 0)
+                        elif transport == 'UDP' and hasattr(pkt, 'udp'):
+                            src_port = int(getattr(pkt.udp, 'srcport', 0) or 0)
+                            dst_port = int(getattr(pkt.udp, 'dstport', 0) or 0)
+
+                        # DNS hostname
+                        domain = None
+                        if hasattr(pkt, 'dns'):
+                            with suppress(Exception):
+                                domain = getattr(pkt.dns, 'qry_name', None)
+                                if domain:
+                                    domain = str(domain).rstrip('.')
+                        # TLS SNI
+                        if not domain and (hasattr(pkt, 'tls') or hasattr(pkt, 'ssl')):
+                            layer = pkt.tls if hasattr(pkt, 'tls') else pkt.ssl if hasattr(pkt, 'ssl') else None
+                            if layer is not None:
+                                with suppress(Exception):
+                                    sni = getattr(layer, 'handshake_extensions_server_name', None)
+                                    if sni:
+                                        domain = str(sni).rstrip('.')
+
+                        # Estimate size
+                        packet_size = 1500
+                        with suppress(Exception):
+                            packet_size = int(getattr(pkt, 'length', packet_size))
+
+                        # MACs not easily available here; synthesize
+                        src_mac = f"device-{src_ip}"
+                        dst_mac = f"remote-{dst_ip}"
+
+                        application = self._categorize_domain(domain) if domain else self._guess_app_from_port(dst_port)
+
+                        self._store_packet_data(
+                            src_ip, dst_ip, src_mac, dst_mac,
+                            src_port, dst_port, protocol_name,
+                            packet_size, domain, application
+                        )
+
+                        # Update stats
+                        self.stats['packets_captured'] += 1
+                        self.stats['bytes_captured'] += packet_size
+                        self.stats['protocols'][protocol_name] += 1
+                        self.stats['applications'][application] += 1
+                        if domain:
+                            self.stats['domains'][domain] += 1
+                    except Exception:
+                        continue
+            except Exception as e:
+                self.logger.error(f"Pyshark capture error: {e}")
+                # Fallback to netstat
+                self._netstat_capture_loop()
             
     def _netstat_capture_loop(self):
         """Fallback capture using netstat (works on all platforms)"""
@@ -425,6 +562,7 @@ class CrossPlatformCapture:
                           domain, application):
         """Store packet data in database"""
         try:
+            now = datetime.utcnow()
             # Get or create device
             device = self._get_or_create_device(src_ip, src_mac)
             
@@ -433,29 +571,62 @@ class CrossPlatformCapture:
             if device and hasattr(device, 'assigned_user'):
                 user = device.assigned_user
             
-            # Create traffic session with base model fields
-            session_data = {
-                'src_mac': src_mac,
-                'dst_mac': dst_mac,
-                'src_ip': src_ip,
-                'dst_ip': dst_ip,
-                'src_port': src_port,
-                'dst_port': dst_port,
-                'protocol': protocol,
-                'start_time': datetime.utcnow(),
-                'bytes_sent': packet_size,
-                'bytes_received': 0,
-                'packet_count': 1
-            }
-            
-            # Add enhanced fields only if model supports them
-            if ENABLE_ENHANCED:
-                session_data['application'] = application
-                session_data['application_category'] = self._get_app_category(application)
-                session_data['is_encrypted'] = (protocol == 'HTTPS' or dst_port == 443)
-            
-            session = TrafficSession(**session_data)
-            db.session.add(session)
+            # Sessionization: update an existing recent session or create
+            idle_seconds = self._idle_seconds_cache
+            try:
+                if AppSettings is not None:
+                    idle_seconds = AppSettings.get_or_create_defaults().session_idle_seconds or idle_seconds
+            except Exception:
+                pass
+
+            existing = TrafficSession.query.filter_by(
+                src_mac=src_mac,
+                dst_ip=dst_ip,
+                dst_port=dst_port,
+                protocol=protocol
+            ).order_by(TrafficSession.start_time.desc()).first()
+
+            should_update = False
+            if existing:
+                # If end_time is None or within idle window, treat as same session
+                last = existing.end_time or existing.start_time or now
+                if (now - last).total_seconds() <= idle_seconds:
+                    should_update = True
+
+            if should_update:
+                existing.bytes_sent = (existing.bytes_sent or 0) + packet_size
+                existing.packet_count = (existing.packet_count or 0) + 1
+                # Use end_time as last_activity marker
+                existing.end_time = now
+                # Optionally fill enhanced fields
+                if ENABLE_ENHANCED:
+                    if hasattr(existing, 'application') and not getattr(existing, 'application', None):
+                        setattr(existing, 'application', application)
+                    if hasattr(existing, 'application_category') and not getattr(existing, 'application_category', None):
+                        setattr(existing, 'application_category', self._get_app_category(application))
+                db.session.add(existing)
+            else:
+                # Create new session
+                session_data = {
+                    'src_mac': src_mac,
+                    'dst_mac': dst_mac,
+                    'src_ip': src_ip,
+                    'dst_ip': dst_ip,
+                    'src_port': src_port,
+                    'dst_port': dst_port,
+                    'protocol': protocol,
+                    'start_time': now,
+                    'end_time': now,  # treat as last_activity; still considered active by endpoint logic
+                    'bytes_sent': packet_size,
+                    'bytes_received': 0,
+                    'packet_count': 1
+                }
+                if ENABLE_ENHANCED:
+                    session_data['application'] = application
+                    session_data['application_category'] = self._get_app_category(application)
+                    session_data['is_encrypted'] = (protocol == 'HTTPS' or dst_port == 443)
+                session = TrafficSession(**session_data)
+                db.session.add(session)
             
             # Create website visit if it's web traffic
             if domain and protocol in ['HTTP', 'HTTPS', 'TCP'] and dst_port in [80, 443, 8080, 8443]:
@@ -584,18 +755,27 @@ class CrossPlatformCapture:
             return None
             
     def _get_vendor_from_mac(self, mac_address):
-        """Get vendor from MAC address"""
-        # This would use an OUI database in production
-        mac_prefixes = {
-            'aa:bb:cc': 'Test Vendor',
-            'device-': 'Local Device'
-        }
-        
-        for prefix, vendor in mac_prefixes.items():
-            if mac_address.startswith(prefix):
-                return vendor
-                
-        return 'Unknown'
+        """Get vendor from MAC address using manuf OUI database if available."""
+        try:
+            if not mac_address:
+                return 'Unknown'
+            mac_norm = str(mac_address).strip().lower()
+            if mac_norm in self._vendor_cache:
+                return self._vendor_cache[mac_norm]
+            # Accept both colon and hyphen forms; manuf handles normalization
+            vendor = None
+            if self._manuf_parser is not None:
+                # Prefer long name; fallback to short
+                with suppress(Exception):
+                    vendor = self._manuf_parser.get_manuf_long(mac_norm)
+                if not vendor:
+                    with suppress(Exception):
+                        vendor = self._manuf_parser.get_manuf(mac_norm)
+            vendor = vendor or 'Unknown'
+            self._vendor_cache[mac_norm] = vendor
+            return vendor
+        except Exception:
+            return 'Unknown'
         
     def _guess_device_type(self, ip_address):
         """Guess device type from IP"""

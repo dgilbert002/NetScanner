@@ -1,5 +1,7 @@
 import os
 import sys
+import threading
+import time
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
@@ -107,6 +109,14 @@ try:
 except ImportError as e:
     print(f"⚠️ Could not load hostnames manager: {e}")
 
+# Register settings routes
+try:
+    from src.routes.settings import settings_bp
+    app.register_blueprint(settings_bp)
+    print("✅ Settings routes loaded")
+except ImportError as e:
+    print(f"⚠️ Could not load settings: {e}")
+
 # Serve group management page
 @app.route('/groups')
 def groups_page():
@@ -132,6 +142,9 @@ db.init_app(app)
 analytics_service = None
 packet_capture = None
 realtime_capture = None
+enrichment_worker = None
+pihole_tap = None
+ndpi_worker = None
 
 if enhanced_services_available:
     analytics_service = AnalyticsService()
@@ -139,12 +152,189 @@ if enhanced_services_available:
 # Import and initialize cross-platform capture
 try:
     from src.cross_platform_capture import CrossPlatformCapture
+    from src.enrichment_worker import EnrichmentWorker
     realtime_capture = CrossPlatformCapture(app_context=app)
     # Auto-start monitoring on app launch
     realtime_capture.start_capture()
     print(f"✅ Real-time network monitoring started automatically on {realtime_capture.platform}!")
     print(f"   Interface: {realtime_capture.interface}")
     print(f"   Method: {'Scapy' if realtime_capture.platform == 'Linux' or (realtime_capture.platform == 'Windows' and realtime_capture._check_npcap()) else 'Netstat'}")
+    
+    # Start enrichment worker
+    enrichment_worker = EnrichmentWorker(app=app, ttl_hours=24)
+    enrichment_worker.start()
+    # Optional Pi-hole DNS tap
+    pihole_tap = None
+    try:
+        # Try local database first
+        from src.pihole_tap import PiHoleTap
+        pihole_tap = PiHoleTap()
+        if pihole_tap.enabled:
+            print("✅ Pi-hole DNS tap enabled (local database)")
+    except Exception:
+        pass
+    
+    # If local didn't work, try remote connection
+    if not pihole_tap or not pihole_tap.enabled:
+        try:
+            from src.pihole_remote import PiHoleRemote
+            pihole_remote = PiHoleRemote()
+            if pihole_remote.enabled:
+                print("✅ Pi-hole connected via network")
+                pihole_tap = pihole_remote  # Use same interface
+        except Exception as e:
+            print(f"ℹ️  Pi-hole not available: {e}")
+
+    # Optional nDPI worker based on Settings (Fallback/On)
+    try:
+        from src.models.settings import AppSettings as _S
+        ndpi_mode = (_S.get_or_create_defaults().ndpi_mode or 'off').lower()
+    except Exception:
+        ndpi_mode = 'off'
+    if ndpi_mode in ('fallback', 'on'):
+        try:
+            from src.ndpi_worker import NDPIWorker
+            ndpi_worker = NDPIWorker(realtime_capture.interface if realtime_capture else 'eth0')
+            if ndpi_worker.start():
+                print("✅ nDPI worker started")
+            else:
+                print("ℹ️  ndpiReader not found; nDPI disabled")
+        except Exception as _:
+            ndpi_worker = None
+
+    # Start a periodic session logger (every 3 seconds)
+    def _session_logger_loop():
+        with app.app_context():
+            while True:
+                try:
+                    now = datetime.utcnow()
+                    since = now - timedelta(seconds=3)
+                    # Fetch sessions updated/seen in the last 3 seconds
+                    rows = []
+                    try:
+                        q = TrafficSession.query.filter(
+                            db.or_(
+                                TrafficSession.start_time >= since,
+                                TrafficSession.end_time >= since
+                            )
+                        ).order_by(TrafficSession.start_time.desc()).limit(50)
+                        recent = q.all()
+                    except Exception as e:
+                        print(f"[SESSION_LOG] query error: {e}")
+                        recent = []
+
+                    for s in recent:
+                        try:
+                            src = s.src_ip or s.src_mac or 'unknown'
+                            dst = s.dst_ip or 'unknown'
+                            proto = s.protocol or 'IP'
+                            port = s.dst_port or 0
+                            total_bytes = int((s.bytes_sent or 0) + (s.bytes_received or 0))
+                            # Status using idle window
+                            idle_seconds = 90
+                            try:
+                                from src.models.settings import AppSettings as _S
+                                idle_seconds = _S.get_or_create_defaults().session_idle_seconds or 90
+                            except Exception:
+                                pass
+                            last_seen_dt = (s.end_time or s.start_time or now)
+                            active = ((now - last_seen_dt).total_seconds() <= idle_seconds)
+                            ts = last_seen_dt.isoformat()
+                            # Enqueue enrichment immediately for unknowns
+                            try:
+                                enr = EnrichedData.query.filter_by(ip_address=dst).first()
+                                if not enr or not (enr.hostname or enr.organization):
+                                    if enrichment_worker:
+                                        enrichment_worker.enqueue_ip(dst, immediate=True)
+                                # Consult Pi-hole DNS tap for last-seen hostname by source IP
+                                if (not enr or not enr.hostname) and pihole_tap and src:
+                                    for ip, host, _tstamp in (pihole_tap.lookup_recent_a(180) or []):
+                                        if ip == src and host:
+                                            # Opportunistically store hostname
+                                            try:
+                                                rec = EnrichedData.query.filter_by(ip_address=dst).first()
+                                                if not rec:
+                                                    rec = EnrichedData(ip_address=dst, hostname=host, updated_at=datetime.utcnow())
+                                                    db.session.add(rec)
+                                                else:
+                                                    rec.hostname = host
+                                                    rec.updated_at = datetime.utcnow()
+                                                db.session.commit()
+                                                enr = rec
+                                            except Exception:
+                                                db.session.rollback()
+                                            break
+                                org = (enr.organization if enr else None) or 'Unknown'
+                                asn = str(enr.asn) if (enr and enr.asn is not None) else 'unknown'
+                                host = (enr.hostname if enr else None) or 'unknown'
+                            except Exception:
+                                org = 'unknown'
+                                asn = 'unknown'
+                                host = 'unknown'
+
+                            # nDPI labels (best effort) with fallback classifier
+                            ndpi_app = ndpi_cat = ndpi_conf = 'n/a'
+                            try:
+                                # Try nDPI first if available
+                                if ndpi_worker and ndpi_worker.enabled:
+                                    lbl = ndpi_worker.get_label(src, dst, port, proto)
+                                    if lbl:
+                                        ndpi_app = lbl.get('app') or 'n/a'
+                                        ndpi_cat = lbl.get('category') or 'n/a'
+                                        ndpi_conf = lbl.get('confidence') or 'n/a'
+                                
+                                # Fallback to traffic classifier if nDPI not available or no results
+                                if ndpi_app == 'n/a' or ndpi_cat == 'n/a':
+                                    from src.traffic_classifier import TrafficClassifier
+                                    classification = TrafficClassifier.classify(
+                                        dst_ip=dst,
+                                        dst_port=port,
+                                        hostname=host if host != 'unknown' else None,
+                                        protocol=proto
+                                    )
+                                    if classification:
+                                        if ndpi_app == 'n/a':
+                                            ndpi_app = classification.get('app', 'n/a')
+                                        if ndpi_cat == 'n/a':
+                                            ndpi_cat = classification.get('category', 'n/a')
+                                        if ndpi_conf == 'n/a':
+                                            ndpi_conf = classification.get('confidence', 'n/a')
+                            except Exception:
+                                pass
+
+                            # Include enriched extras
+                            try:
+                                enr = EnrichedData.query.filter_by(ip_address=dst).first()
+                                root_domain = None
+                                if enr and enr.hostname:
+                                    ext = __import__('tldextract').tldextract.extract(enr.hostname)
+                                    root_domain = '.'.join(p for p in [ext.domain, ext.suffix] if p) or None
+                                cc = getattr(enr, 'country_code', None) if enr else None
+                                # ip2asn fallback for cc
+                                if (not cc or cc.lower() == 'n/a') and enrichment_worker and enrichment_worker.ip2asn:
+                                    info = enrichment_worker.ip2asn.lookup(dst)
+                                    if info and info.get('country'):
+                                        cc = info.get('country')
+                            except Exception:
+                                root_domain = None
+                                cc = None
+
+                            rows.append(f"{ts} | {src} -> {dst} {proto}:{port} bytes={total_bytes} active={active} org={org} asn={asn} host={host} cc={cc or 'n/a'} root={root_domain or 'n/a'} ndpi_app={ndpi_app} ndpi_cat={ndpi_cat} ndpi_conf={ndpi_conf}")
+                        except Exception:
+                            continue
+
+                    if rows:
+                        iface = getattr(realtime_capture, 'interface', 'n/a')
+                        print(f"[SESSION_LOG] last 3s on {iface}: {len(rows)} session(s)")
+                        for line in rows[:10]:
+                            print(f"[SESSION_LOG] {line}")
+                except Exception as e:
+                    print(f"[SESSION_LOG] loop error: {e}")
+                finally:
+                    time.sleep(3)
+
+    _t = threading.Thread(target=_session_logger_loop, daemon=True)
+    _t.start()
 except Exception as e:
     print(f"⚠️ Could not start real-time capture: {e}")
     realtime_capture = None

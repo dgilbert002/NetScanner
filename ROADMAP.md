@@ -1,72 +1,92 @@
-## NetScanner Family Profiles Roadmap
+## NetScanner Roadmap
 
-This roadmap captures the plan to evolve NetScanner into a family monitoring and safety system with Profiles (users), Devices, Live view, and Application/URL intelligence, while keeping the code robust, modular, and cross‑platform.
+This roadmap drives the app from the current demo-perfect GUI to a real-time, 90‑day history system with capture, classification, rules, and settings.
 
 ### Principles
-- Keep existing DB schemas stable; prefer feature toggles and additive tables.
-- Group by features (profiles, devices, analytics), keep files tidy.
+- Additive migrations only (never destructive); safe on Windows and Raspberry Pi.
+- Group by features (Home, Live, Devices, Rules, Settings).
 - Logging for every function: name, inputs, outputs.
-- Cross‑platform (Windows + Raspberry Pi) and low overhead.
+- Feature flags via Settings; single source of truth in DB.
 
-### Phase 1 — UI Shell (left nav + right detail)
-Deliver static HTML prototypes (no backend wiring yet) to confirm UX.
-- Left nav items: Dashboard, Live, Profiles, Devices, Applications.
-- Right detail shows section header, time range filters (30d, 7d, 24h, 15m, Live), and placeholder cards.
+---
 
-Artifacts to add under `src/static/prototypes/`:
-- `dashboard.html` — KPIs, charts placeholders.
-- `live.html` — live table layout, connection rows.
-- `profiles.html` — profiles list at left, profile detail at right.
-- `devices.html` — device grid/table with bulk actions and rename flow.
+### Phase A — Settings & Schema Safety (now)
+Deliverables:
+- Settings tab in UI: Session idle window (seconds), nDPI mode (Off / Fallback / On).
+- Settings backend: `settings` table and `/api/settings` GET/POST.
+- Schema ensure script: scans SQLAlchemy models and creates missing tables/columns.
 
-Roll back: delete the four prototype files and remove any links pointing to them.
+Rollback:
+- Remove Settings nav; keep defaults hard-coded (idle=90s, nDPI=Fallback).
 
-### Phase 2 — Profiles (a.k.a. Groups)
-Backend APIs: Use SQLite direct tables to avoid ORM collisions.
-- Tables: `device_groups` and `device_group_memberships` (already added from `group_management`).
-- CRUD for profiles; assign/unassign devices.
-- Friendly device names via updating `Device.hostname` (alias support later).
+---
 
-Wire UI pages:
-- Profiles: list, create, edit, delete; show devices; add/remove devices; live and analytics tabs.
+### Phase B — Capture → Sessionization → Classification
+Deliverables:
+- Capture via pyshark/tshark; scapy fallback.
+- Sessionizer with idle close threshold from Settings (default 90s).
+- Classification order: Rules → root-domain → nDPI (per Settings mode) → Unknown/Uncategorized.
+- Persist sessions with app_id/category_id, rule_source, confidence.
 
-Roll back: drop the 2 SQLite tables or leave empty; remove routes in `group_management` and `device_admin`.
+Rollback:
+- Disable capture worker; UI continues with demo data.
 
-### Phase 3 — DNS/URL/Application Intelligence
-- Improve DNS resolution: cache DNS answers (A records) and reverse DNS fallback (done in `cross_platform_capture`).
-- Maintain `config/app_domains.json` mappings; add editor UI for Apps/Categories.
-- Enrich flows with domain → app category; guard with `ENABLE_ENHANCED` to avoid base model conflicts.
+---
 
-Roll back: disable mapping reads; revert `_categorize_domain` to port‑based fallback.
+### Phase C — Endpoints that mirror demo JSON
+Deliverables:
+- `/api/live/sessions`, `/api/devices`, `/api/home/summary`, `/api/profiles/:id/detail` returning the exact shape the UI expects.
+- Keep client-side filters; add server-side filtering later.
 
-### Phase 4 — Time‑range Analytics
-- Endpoints for summaries: per profile, per device, per app, per domain.
-- Filters: 30d, 7d, 24h, 15m, Live. Return bytes, session counts, top domains/apps.
-- Live tab auto‑refresh.
+Rollback:
+- Repoint UI to demo adapters; endpoints remain additive.
 
-Roll back: keep old endpoints; new ones are additive under `/api/v2`.
+---
 
-### Phase 5 — Applications Manager
-- UI to add/edit Application → Domains list and Category; bulk import.
-- Drill‑down per app/category across profiles and devices.
+### Phase D — Aggregations & Alerts
+Deliverables:
+- 5‑minute rollups for Live table and counters.
+- Accurate “time online” via merged session intervals per profile.
+- Alerts table + badge updates; toggle seen/clear wired.
 
-Roll back: disable the UI routes; keep config file.
+Rollback:
+- Turn off the aggregator job; real-time still shows live sessions.
 
-### Phase 6 — Polishing & Export
-- Export CSV/JSON of profile/device usage by period.
-- On‑device caching; background workers.
-- Access control (pin or simple auth) for admin actions.
+---
 
-Roll back: remove export endpoints; keep capture untouched.
+### Phase E — Retention (90 days)
+Deliverables:
+- Nightly retention job: delete sessions/rollups older than 90 days; vacuum.
+- Index maintenance.
 
-### Notes for Developers
-- If `ENABLE_ENHANCED=0`, never access enhanced-only columns.
-- Use `hasattr` checks when touching model attributes that differ.
-- Prefer additive SQLite tables over altering existing ones.
+Rollback:
+- Disable the retention job; manual clean supported.
 
-### Quick Links (dev only)
-- Profiles API: `/api/v2/groups/*`
-- Device admin: `/api/v2/devices`, `PUT /api/v2/devices/<id>/rename`
-- Prototypes: `/prototypes/dashboard`, `/prototypes/live`, `/prototypes/profiles`, `/prototypes/devices`
+---
+
+### Phase F — Optional nDPI Integration
+Deliverables:
+- ndpiReader JSON adapter; consult based on Settings (Off/Fallback/On).
+- Confidence tagging; manual rules always override.
+
+Rollback:
+- Set Settings → nDPI=Off; code paths short‑circuit.
+
+---
+
+### Phase G — Documentation & Ops
+Deliverables:
+- Functionality.md kept in lock‑step with behavior.
+- Raspberry Pi setup appendix (tshark, pyshark, scapy, optional nDPI build steps).
+- Export/import of rules JSON.
+
+Rollback:
+- Docs remain; features can be toggled in Settings.
+
+---
+
+### Tracking
+- Each phase is atomic and reversible via feature flags or job toggles.
+- We will commit after each milestone and update Functionality.md and this roadmap.
 
 
