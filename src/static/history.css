@@ -1,0 +1,88 @@
+/* Mobile History view - light theme, matching the classic dashboard palette
+   (white cards, --primary accent, quiet greys) and following the phone-first
+   design: day accordions + a dot-and-line timeline of visits. */
+
+#history-overlay{display:none;position:fixed;inset:0;z-index:1200;background:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  color:#2d3748;overflow:hidden}
+#history-overlay .hsheet{height:100%;display:flex;flex-direction:column;max-width:640px;
+  margin:0 auto;background:#fff}
+@media (min-width:700px){#history-overlay{background:rgba(45,55,72,.45)}
+  #history-overlay .hsheet{border-radius:14px;margin:24px auto;height:calc(100% - 48px);
+  box-shadow:0 18px 50px rgba(0,0,0,.28)}}
+
+.hhead{display:flex;align-items:center;gap:10px;padding:14px 14px 8px}
+.hhead h1{flex:1;text-align:center;font-size:17px;font-weight:600;color:#4a5568;margin:0}
+.hback{background:none;border:0;font-size:22px;color:#667eea;cursor:pointer;padding:0 6px;line-height:1}
+.hadv{font-size:12px;color:#667eea;text-decoration:none;border:1px solid #667eea;border-radius:999px;
+  padding:3px 10px}
+
+.htabs{display:flex;border-bottom:1px solid #e2e8f0}
+.htabs button{flex:1;background:none;border:0;padding:11px 8px;font-size:14px;color:#a0aec0;
+  cursor:pointer;border-bottom:2px solid transparent}
+.htabs button.active{color:#4a5568;font-weight:600;border-bottom-color:#667eea}
+
+.hfilter{padding:10px 12px;border-bottom:1px solid #edf2f7;display:flex;flex-direction:column;gap:8px}
+.hpeople,.hranges{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
+.hpeople button,.hranges button{border:1px solid #e2e8f0;background:#f7fafc;color:#4a5568;
+  border-radius:999px;padding:5px 12px;font-size:12.5px;cursor:pointer;white-space:nowrap;
+  display:inline-flex;align-items:center;gap:6px}
+.hpeople button.active,.hranges button.active{background:#667eea;border-color:#667eea;color:#fff}
+.hpeople .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.hbody{flex:1;overflow-y:auto;padding:6px 0 40px;-webkit-overflow-scrolling:touch}
+.hsummary{font-size:12px;color:#718096;padding:8px 16px}
+
+.hday{border-top:1px solid #edf2f7}
+.hdayhead{width:100%;display:flex;align-items:center;gap:8px;background:none;border:0;
+  padding:14px 16px;cursor:pointer;text-align:left}
+.hdaylabel{font-size:14.5px;font-weight:600;color:#2d3748;flex:1}
+.hdaymeta{font-size:11.5px;color:#a0aec0}
+.hchev{color:#a0aec0;font-size:13px}
+
+.hchips{display:flex;gap:6px;flex-wrap:wrap;padding:0 16px 8px}
+.hchip{font-size:11.5px;color:#4a5568;background:#edf2f7;border-radius:999px;padding:3px 9px}
+.hchip b{color:#2d3748}
+
+/* the timeline: time | rail with dot | icon | text */
+.htl{padding:2px 16px 14px}
+.hentry{display:grid;grid-template-columns:64px 18px 30px 1fr;align-items:start;
+  min-height:52px;position:relative}
+.htime{font-size:12px;color:#2d3748;text-align:right;padding-right:8px;padding-top:2px;
+  font-variant-numeric:tabular-nums}
+.hrail{position:relative;width:18px;align-self:stretch}
+.hrail::before{content:"";position:absolute;left:8px;top:0;bottom:0;width:2px;background:#bee3f8}
+.hdot{position:absolute;left:4px;top:7px;width:11px;height:11px;border-radius:50%;
+  background:#667eea;border:2px solid #fff;box-shadow:0 0 0 1px #bee3f8}
+.hdot.live{background:#48bb78}
+.hdot.est{background:#f6ad55}
+.hentry:last-child .hrail::before{height:9px}
+.hfav{width:24px;height:24px;border-radius:50%;color:#fff;font-size:12px;font-weight:700;
+  display:inline-flex;align-items:center;justify-content:center;margin:1px 0 0 2px}
+.hmeta{display:flex;flex-direction:column;gap:2px;padding:0 0 10px 4px;min-width:0}
+.hurl{font-size:13px;color:#2d3748;word-break:break-all;line-height:1.3}
+.hsub{font-size:11.5px;color:#718096;line-height:1.35}
+.hlive{color:#48bb78;font-weight:600}
+.hest{color:#dd6b20}
+.hempty{padding:40px 24px;text-align:center;color:#a0aec0;font-size:13px;line-height:1.6}
+
+.happlist{padding:4px 16px 20px;display:flex;flex-direction:column;gap:14px}
+.happtop{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;color:#2d3748;
+  align-items:baseline}
+.happtop .hsub{display:block;font-size:11.5px}
+.happtime{color:#718096;font-size:12px;white-space:nowrap}
+.hbar{height:7px;border-radius:5px;background:#edf2f7;overflow:hidden;margin-top:5px}
+.hbar i{display:block;height:100%;background:linear-gradient(90deg,#667eea,#764ba2);border-radius:5px}
+
+/* pills inside the (dark) intel strip link into this view */
+.intel-strip .hpill{display:inline-flex;align-items:center;gap:6px;border:1px solid #35424f;
+  background:transparent;color:#c9d4de;border-radius:999px;padding:3px 11px;font-size:12px;
+  cursor:pointer}
+.intel-strip .hpill:hover{border-color:#58a6ff;color:#e6edf3}
+.intel-strip .hpill .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.intel-strip .hpill .hcount{color:#7d8b99;font-size:11px}
+.intel-strip .hpill.ghost{border-style:dashed;color:#58a6ff}
+
+/* person badge appended next to device MACs in the legacy tables */
+.hbadge{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font-size:11px;
+  background:#ebf8ff;color:#2b6cb0;border:1px solid #bee3f8;vertical-align:middle}
+.hbadge.certain{background:#f0fff4;color:#276749;border-color:#c6f6d5}

@@ -146,11 +146,15 @@ def test_estimated_evidence_is_marked(ctx):
 
 
 def test_site_state_live_then_idle(ctx):
-    base = datetime.utcnow() - timedelta(seconds=200)
+    # 70 s of silence: past the 60 s "quiet" threshold but inside the 90 s idle
+    # window, so the session must be marked idle - not closed, and not live.
+    base = datetime.utcnow() - timedelta(seconds=80)
     s = Sessionizer(idle_seconds=90, mirror_legacy=False)
     s.ingest(ev(base))
     s.ingest(ev(base + timedelta(seconds=10)))
     s.sweep()
-    site = IntelSiteSession.query.first()
+    # scope to this test's own device: the test database is shared with other
+    # tests, so an unscoped query can return one of their sessions
+    site = IntelSiteSession.query.filter_by(device_mac='aa:bb:cc:00:00:01').first()
     assert site is not None
-    assert site.state in ('idle', 'live')
+    assert site.state == 'idle', (site.state, site.first_seen, site.last_seen)

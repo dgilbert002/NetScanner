@@ -145,8 +145,20 @@ def device_labels():
                 'vendor': row.vendor,
                 'is_randomized': bool(row.is_randomized),
                 'device_key': row.device_key,
+                'device_class': getattr(row, 'device_class', None),
                 'last_seen': _iso(row.last_seen),
             }
+        # today's online time, so the family screen can show it per device
+        try:
+            today = datetime.utcnow().strftime('%Y-%m-%d')
+            for row in intel_store.equery(IntelOnlineDay).filter_by(day=today).all():
+                mac = (row.device_mac or '').lower()
+                if mac in labels:
+                    seconds = int(row.online_seconds or 0)
+                    labels[mac]['online_today_seconds'] = seconds
+                    labels[mac]['online_today_human'] = _hms(seconds)
+        except Exception:
+            pass
     except Exception:
         pass
     return labels
@@ -745,4 +757,715 @@ def searches():
                  'HTTPS searches (essentially all of them today) cannot be read locally, '
                  'by this or any other tool, without breaking TLS.'),
         'generated_at': datetime.utcnow().isoformat(),
+    })
+
+
+# ---------------------------------------------------------------------------
+# /assignment - who is which device, and what still needs allocating
+# ---------------------------------------------------------------------------
+
+@history_bp.route('/assignment')
+def assignment():
+    """Everything the "family & devices" screen needs in one call.
+
+    ``people`` carry their devices, ``devices`` carry their person (locked
+    binding wins, otherwise the best guess is flagged as uncertain) and
+    ``unassigned`` lists devices nobody has claimed - so an operator can
+    allocate them from a dropdown instead of typing a MAC address.
+    """
+    by_mac, by_person = identity_maps()
+    labels = device_labels()
+    try:
+        people = intel_store.equery(IntelPerson).all()
+    except Exception:
+        people = []
+    try:
+        scores = intel_store.equery(IntelIdentityScore).all()
+    except Exception:
+        scores = []
+    try:
+        devices = intel_store.equery(IntelDeviceMac).all()
+    except Exception:
+        devices = []
+
+    best = {}
+    for score in scores:
+        mac = (score.device_mac or '').lower()
+        current = best.get(mac)
+        rank = (bool(score.locked or score.is_binding), float(score.probability or 0))
+        if current is None or rank > current[0]:
+            best[mac] = (rank, score)
+
+    people_out = []
+    for person in people:
+        macs = sorted({m.lower() for m in by_person.get(person.id, [])})
+        people_out.append({
+            'id': person.id,
+            'name': person.name,
+            'display_name': person.display_name or person.name,
+            'color': getattr(person, 'color', None) or '#3498db',
+            'is_child': bool(getattr(person, 'is_child', False)),
+            'notes': getattr(person, 'notes', None),
+            'macs': macs,
+            'devices': [labels.get(mac, {'mac': mac}) for mac in macs],
+        })
+
+    devices_out = []
+    for mac, label in sorted(labels.items()):
+        mapped = by_mac.get(mac) or {}
+        rank_score = best.get(mac)
+        score = rank_score[1] if rank_score else None
+        devices_out.append({
+            'mac': mac,
+            'name': label.get('name') or mac,
+            'vendor': label.get('vendor'),
+            'device_class': label.get('device_class'),
+            'is_randomized': label.get('is_randomized'),
+            'online_today_seconds': label.get('online_today_seconds'),
+            'online_today_human': label.get('online_today_human'),
+            'last_seen': label.get('last_seen'),
+            'person_id': mapped.get('person_id'),
+            'person': mapped.get('person_name'),
+            'certain': bool(mapped.get('locked')),
+            'probability': round(float(mapped.get('probability') or 0), 3) if mapped else None,
+            'star': (label.get('star') or {}).get('kind') if isinstance(label.get('star'), dict) else None,
+            'suggestion': None if mapped.get('person_name') else (
+                {'person_id': score.person_id,
+                 'person': score.person_name,
+                 'probability': round(float(score.probability or 0), 3),
+                 'reason': (score.explanation or {}).get('prior_reason')
+                           if isinstance(score.explanation, dict) else None}
+                if score is not None and score.person_name and (score.probability or 0) >= 0.5
+                else None),
+        })
+    unassigned = [d for d in devices_out if not d['person']]
+    return jsonify({
+        'people': people_out,
+        'devices': devices_out,
+        'unassigned': unassigned,
+        'assigned_count': len(devices_out) - len(unassigned),
+        'device_count': len(devices_out),
+        'generated_at': datetime.utcnow().isoformat(),
+    })
+
+
+@history_bp.route('/people/<int:person_id>/unbind', methods=['POST'])
+def unbind_person(person_id):
+    """Release a device from a person (the device keeps its history)."""
+    mac = ((request.get_json(silent=True) or {}).get('mac') or '').lower()
+    try:
+        from src.intel.maclab import normalize_mac
+        mac = normalize_mac(mac) or mac
+    except Exception:
+        pass
+    if not mac:
+        return jsonify({'error': 'mac is required'}), 400
+    removed = 0
+    try:
+        rows = intel_store.equery(IntelIdentityScore).filter_by(
+            device_mac=mac, person_id=person_id).all()
+        for row in rows:
+            intel_store.engine_session().delete(row)
+            removed += 1
+        intel_store.engine_session().commit()
+    except Exception as exc:
+        intel_store.engine_session().rollback()
+        return jsonify({'error': str(exc)}), 500
+    if not removed:
+        return jsonify({'error': 'no binding found for that device'}), 404
+    return jsonify({'message': 'device released', 'mac': mac, 'removed': removed})
+
+
+@history_bp.route('/people/<int:person_id>', methods=['PATCH', 'POST'])
+def update_person(person_id):
+    """Rename a person, change their colour or child flag."""
+    payload = request.get_json(silent=True) or {}
+    try:
+        person = intel_store.equery(IntelPerson).get(person_id)
+    except Exception:
+        person = None
+    if person is None:
+        return jsonify({'error': 'person not found'}), 404
+    for field in ('name', 'display_name', 'notes'):
+        if payload.get(field) is not None:
+            setattr(person, field, str(payload[field])[:120])
+    if payload.get('color'):
+        person.color = str(payload['color'])[:16]
+    if payload.get('is_child') is not None:
+        person.is_child = bool(payload['is_child'])
+    try:
+        intel_store.engine_session().commit()
+    except Exception as exc:
+        intel_store.engine_session().rollback()
+        return jsonify({'error': str(exc)}), 500
+    return jsonify({'message': 'person updated', 'person': person.to_dict()})
+
+
+@history_bp.route('/people/<int:person_id>', methods=['DELETE'])
+def delete_person(person_id):
+    """Delete a person, their bindings and their usage attribution."""
+    try:
+        person = intel_store.equery(IntelPerson).get(person_id)
+    except Exception:
+        person = None
+    if person is None:
+        return jsonify({'error': 'person not found'}), 404
+    session = intel_store.engine_session()
+    removed = {'bindings': 0}
+    try:
+        rows = intel_store.equery(IntelIdentityScore).filter_by(person_id=person_id).all()
+        for row in rows:
+            row.person_id = None
+            row.person_name = None
+            row.is_binding = False
+            row.locked = False
+            removed['bindings'] += 1
+        for model in (IntelSearch, IntelDeviceEvent):
+            for row in intel_store.equery(model).filter_by(person_id=person_id).all():
+                row.person_id = None
+        session.delete(person)
+        session.commit()
+    except Exception as exc:
+        session.rollback()
+        return jsonify({'error': str(exc)}), 500
+    return jsonify({'message': 'person deleted', 'released_devices': removed['bindings']})
+
+
+# ---------------------------------------------------------------------------
+# /series - the numbers behind the graphs (daily bars, stacked categories,
+#           per-person comparison and the 24-hour profile)
+# ---------------------------------------------------------------------------
+
+@history_bp.route('/series')
+def series():
+    spec = _filters()
+    by_mac, by_person = identity_maps()
+    person, macs = _person_scope(spec, by_mac, by_person)
+    dimension = spec['dimension']
+    if dimension not in ('app', 'site', 'category', 'device'):
+        dimension = 'category'
+    top_n = min(max(int(request.args.get('top', 6) or 6), 1), 12)
+    start_day = spec['start_date']
+    end_day = spec['end_date']
+
+    # a gap-filled day axis, so a chart never has holes in it
+    day_axis = []
+    cursor = datetime.strptime(start_day, '%Y-%m-%d')
+    last = datetime.strptime(end_day, '%Y-%m-%d')
+    while cursor < last and len(day_axis) < 400:
+        day_axis.append(cursor.strftime('%Y-%m-%d'))
+        cursor += timedelta(days=1)
+
+    try:
+        rows = intel_store.equery(IntelDailyUsage).filter(
+            IntelDailyUsage.day >= start_day, IntelDailyUsage.day <= end_day,
+            IntelDailyUsage.dimension == dimension).all()
+    except Exception as exc:
+        return jsonify({'error': str(exc)}), 500
+    if macs:
+        rows = [r for r in rows if (r.device_mac or '').lower() in macs]
+
+    name_categories = app_categories() if dimension == 'app' else {}
+
+    def label_for(key):
+        info = DEFAULT_CATALOG.lookup_host(key) or {}
+        return {'name': info.get('app') or key,
+                'category': (info.get('category') if dimension in ('site', 'category')
+                             else name_categories.get((key or '').lower())) or 'Unknown'}
+
+    daily = {day: 0 for day in day_axis}
+    daily_bytes = {day: 0 for day in day_axis}
+    daily_sessions = {day: 0 for day in day_axis}
+    per_key = {}
+    per_day_key = {}
+    for row in rows:
+        day = row.day
+        seconds = int(row.seconds or 0)
+        if day not in daily:
+            continue
+        daily[day] += seconds
+        daily_bytes[day] += int(row.bytes_total or 0)
+        daily_sessions[day] += int(row.sessions or 0)
+        entry = per_key.setdefault(row.key or 'Unknown', {'seconds': 0, 'days': {}})
+        entry['seconds'] += seconds
+        entry['days'][day] = entry['days'].get(day, 0) + seconds
+        per_day_key.setdefault(day, {})[row.key or 'Unknown'] = \
+            per_day_key.get(day, {}).get(row.key or 'Unknown', 0) + seconds
+
+    ordered = sorted(per_key.items(), key=lambda kv: -kv[1]['seconds'])
+    top = ordered[:top_n]
+    rest_seconds = sum(v['seconds'] for _k, v in ordered[top_n:])
+
+    stacked = []
+    for key, entry in top:
+        meta = label_for(key)
+        stacked.append({
+            'key': key, 'name': meta['name'], 'category': meta['category'],
+            'seconds': entry['seconds'], 'human': _hms(entry['seconds']),
+            'points': [{'day': day, 'seconds': entry['days'].get(day, 0)} for day in day_axis],
+        })
+    if rest_seconds:
+        stacked.append({
+            'key': '(other)', 'name': 'Other', 'category': 'Unknown',
+            'seconds': rest_seconds, 'human': _hms(rest_seconds),
+            'points': [{'day': day, 'seconds': sum(
+                per_day_key.get(day, {}).get(k, 0) for k, _v in ordered[top_n:])}
+                for day in day_axis],
+        })
+
+    # per-person comparison (only when nobody specific was requested)
+    people_series = []
+    if not spec['person'] and not macs:
+        try:
+            people = intel_store.equery(IntelPerson).all()
+        except Exception:
+            people = []
+        person_rows = []
+        try:
+            person_rows = intel_store.equery(IntelDailyUsage).filter(
+                IntelDailyUsage.day >= start_day, IntelDailyUsage.day <= end_day,
+                IntelDailyUsage.dimension == dimension).all()
+        except Exception:
+            person_rows = []
+        for p in people:
+            mine = {m.lower() for m in by_person.get(p.id, [])}
+            days = {day: 0 for day in day_axis}
+            total = 0
+            for row in person_rows:
+                if (row.device_mac or '').lower() in mine and row.day in days:
+                    value = int(row.seconds or 0)
+                    days[row.day] += value
+                    total += value
+            people_series.append({
+                'person_id': p.id, 'name': p.display_name or p.name,
+                'color': getattr(p, 'color', None) or '#3498db',
+                'seconds': total, 'human': _hms(total),
+                'points': [{'day': day, 'seconds': days[day]} for day in day_axis],
+            })
+        people_series.sort(key=lambda p: -p['seconds'])
+
+    # 24-hour profile across the window, from the 5-minute buckets
+    hours = [{'hour': h, 'seconds': 0} for h in range(24)]
+    try:
+        buckets = intel_store.equery(IntelUsageBucket).filter(
+            IntelUsageBucket.bucket_start >= spec['start'],
+            IntelUsageBucket.bucket_start < spec['end'],
+            IntelUsageBucket.dimension == 'device').all()
+        for bucket in buckets:
+            if macs and (bucket.device_mac or '').lower() not in macs:
+                continue
+            # The device dimension keeps its time in online_seconds (a device can
+            # be online without a named app); app/site/category rows use seconds.
+            value = bucket.online_seconds or bucket.seconds or 0
+            hours[bucket.bucket_start.hour]['seconds'] += int(value)
+    except Exception:
+        pass
+    hour_total = sum(h['seconds'] for h in hours)
+    for hour in hours:
+        hour['human'] = _hms(hour['seconds'])
+        hour['share'] = round(hour['seconds'] / hour_total, 4) if hour_total else 0
+
+    peak_hour = max(hours, key=lambda h: h['seconds'])['hour'] if hour_total else None
+    return jsonify({
+        'dimension': dimension, 'range': spec['range'],
+        'start': start_day, 'end': end_day,
+        'person': ({'id': person.id, 'name': person.display_name or person.name}
+                   if person else None),
+        'days': [{'day': day, 'seconds': daily[day], 'human': _hms(daily[day]),
+                  'bytes': daily_bytes[day], 'sessions': daily_sessions[day]}
+                 for day in day_axis],
+        'stacked': stacked,
+        'people': people_series,
+        'hours': hours,
+        'totals': {
+            'seconds': sum(daily.values()), 'human': _hms(sum(daily.values())),
+            'best_day': max(daily, key=lambda d: daily[d]) if daily and any(daily.values()) else None,
+            'bytes': sum(daily_bytes.values()),
+            'sessions': sum(daily_sessions.values()),
+            'peak_hour': peak_hour,
+            'active_days': len([d for d, v in daily.items() if v]),
+        },
+    })
+
+
+# ---------------------------------------------------------------------------
+# /gantt - one day of activity as bands, per person or per device
+# ---------------------------------------------------------------------------
+
+@history_bp.route('/gantt')
+def gantt():
+    """Who was online when, for a single day (a real timeline, not a total).
+
+    Each band is one device (or one person, when every device of that person is
+    folded together) and each interval is a merged stretch of activity, with the
+    dominant app/category for that stretch so the timeline is readable.
+    """
+    spec = _filters()
+    day = request.args.get('date') or datetime.utcnow().strftime('%Y-%m-%d')
+    try:
+        start = datetime.strptime(day, '%Y-%m-%d')
+    except Exception:
+        start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        day = start.strftime('%Y-%m-%d')
+    end = start + timedelta(days=1)
+    by_mac, by_person = identity_maps()
+    labels = device_labels()
+    group_by = (request.args.get('by') or 'person').lower()
+    person_filter, macs = _person_scope(spec, by_mac, by_person)
+
+    try:
+        rows = intel_store.equery(IntelSiteSession).filter(
+            IntelSiteSession.last_seen >= start,
+            IntelSiteSession.first_seen < end).all()
+    except Exception as exc:
+        return jsonify({'error': str(exc)}), 500
+    if macs:
+        rows = [r for r in rows if (r.device_mac or '').lower() in macs]
+
+    bands = {}
+    for row in rows:
+        mac = (row.device_mac or '').lower()
+        mapped = by_mac.get(mac) or {}
+        if group_by == 'device':
+            band_key = mac
+            band_name = (labels.get(mac) or {}).get('name') or mac
+            person_name = mapped.get('person_name')
+        else:
+            if mapped.get('person_id'):
+                band_key = f"person:{mapped['person_id']}"
+                band_name = mapped.get('person_name') or mac
+            else:
+                band_key = f'device:{mac}'
+                band_name = ((labels.get(mac) or {}).get('name') or mac) + ' (unassigned)'
+            person_name = mapped.get('person_name')
+        band = bands.setdefault(band_key, {
+            'key': band_key, 'name': band_name,
+            'person': person_name,
+            'macs': set(),
+            'seconds': 0, 'intervals': [],
+        })
+        band['macs'].add(mac)
+        band['seconds'] += int(row.dwell_seconds or 0)
+        first = max(row.first_seen or start, start)
+        last = min(row.last_seen or end, end)
+        # clip to the requested day and turn it into minutes-from-midnight,
+        # which is what a timeline needs
+        start_min = max(0, int((first - start).total_seconds() // 60))
+        end_min = min(1440, max(start_min + 1, int((last - start).total_seconds() // 60) + 1))
+        band['intervals'].append({
+            'start': start_min, 'end': end_min,
+            'start_time': first.strftime('%H:%M'), 'end_time': last.strftime('%H:%M'),
+            'seconds': int(row.dwell_seconds or 0),
+            'human': _hms(row.dwell_seconds),
+            'app': row.app, 'category': row.category,
+            'domain': row.root_domain,
+            'url': row.url_last,
+            'estimated': bool(row.is_estimated),
+        })
+
+    out = []
+    for band in bands.values():
+        band['intervals'].sort(key=lambda i: i['start'])
+        band['macs'] = sorted(band['macs'])
+        band['human'] = _hms(band['seconds'])
+        out.append(band)
+    out.sort(key=lambda b: -b['seconds'])
+    return jsonify({
+        'day': day, 'by': group_by, 'bands': out,
+        'total_seconds': sum(b['seconds'] for b in out),
+        'total_human': _hms(sum(b['seconds'] for b in out)),
+        'person': ({'id': person_filter.id,
+                    'name': person_filter.display_name or person_filter.name}
+                   if person_filter else None),
+    })
+
+
+# ---------------------------------------------------------------------------
+# /heatmap - hours x days grid of usage (the "when is the house busy" view)
+# ---------------------------------------------------------------------------
+
+@history_bp.route('/heatmap')
+def heatmap():
+    """One row per day, 24 columns of hours, coloured by time used.
+
+    Built from the 5-minute buckets, so it is a real picture of *when* activity
+    happened rather than a daily total: midnight -> 23:59, every day in the
+    window.  ``dimension=app|category`` with ``key=`` restricts the grid to one
+    app ("when is Roblox played?"); the default is all device activity.
+    """
+    spec = _filters()
+    by_mac, by_person = identity_maps()
+    person, macs = _person_scope(spec, by_mac, by_person)
+    dimension = (request.args.get('dimension') or 'device').lower()
+    if dimension not in ('device', 'app', 'site', 'category'):
+        dimension = 'device'
+    key = (request.args.get('key') or '').strip() or None
+
+    day_axis = []
+    cursor = datetime.strptime(spec['start_date'], '%Y-%m-%d')
+    last = datetime.strptime(spec['end_date'], '%Y-%m-%d')
+    while cursor < last and len(day_axis) < 400:
+        day_axis.append(cursor.strftime('%Y-%m-%d'))
+        cursor += timedelta(days=1)
+
+    grid = {day: [0] * 24 for day in day_axis}
+    hour_totals = [0] * 24
+    day_totals = {day: 0 for day in day_axis}
+    try:
+        rows = intel_store.equery(IntelUsageBucket).filter(
+            IntelUsageBucket.bucket_start >= spec['start'],
+            IntelUsageBucket.bucket_start < spec['end'],
+            IntelUsageBucket.dimension == dimension).all()
+    except Exception as exc:
+        return jsonify({'error': str(exc)}), 500
+
+    for row in rows:
+        if macs and (row.device_mac or '').lower() not in macs:
+            continue
+        if key and (row.key or '').lower() != key.lower():
+            continue
+        day = row.bucket_start.strftime('%Y-%m-%d')
+        if day not in grid:
+            continue
+        # the device dimension keeps its time in online_seconds, everything else
+        # in seconds (a device can be online with no identifiable app)
+        value = int(row.online_seconds or row.seconds or 0)
+        if value <= 0:
+            continue
+        hour = row.bucket_start.hour
+        grid[day][hour] += value
+        hour_totals[hour] += value
+        day_totals[day] += value
+
+    peak = max([max(values) for values in grid.values()] or [0])
+    return jsonify({
+        'dimension': dimension, 'key': key,
+        'range': spec['range'], 'start': spec['start_date'], 'end': spec['end_date'],
+        'person': ({'id': person.id, 'name': person.display_name or person.name}
+                   if person else None),
+        'hour_totals': hour_totals,
+        'hours': [{'hour': h, 'seconds': hour_totals[h], 'human': _hms(hour_totals[h])}
+                  for h in range(24)],
+        'days': [{'day': day, 'hours': grid[day], 'seconds': day_totals[day],
+                  'human': _hms(day_totals[day]),
+                  'peak_hour': (max(range(24), key=lambda h: grid[day][h])
+                                if day_totals[day] else None)}
+                 for day in day_axis],
+        'max_seconds': peak,
+        'totals': {
+            'seconds': sum(day_totals.values()), 'human': _hms(sum(day_totals.values())),
+            'busiest_hour': (max(range(24), key=lambda h: hour_totals[h])
+                             if sum(hour_totals) else None),
+            'busiest_day': (max(day_totals, key=lambda d: day_totals[d])
+                            if any(day_totals.values()) else None),
+            'active_days': len([d for d, v in day_totals.items() if v]),
+        },
+    })
+
+
+# ---------------------------------------------------------------------------
+# /daylog - the mobile "History" view: newest day first, newest visit first
+# ---------------------------------------------------------------------------
+
+@history_bp.route('/daylog')
+def daylog():
+    """Days of visited sites, ready to render as a timeline.
+
+    Each entry is one site session with the time it started, what was visited
+    (URL + domain), the app and category the catalogue resolved, and how long it
+    lasted - which is exactly the shape a phone screen can show.
+    """
+    spec = _filters()
+    by_mac, by_person = identity_maps()
+    labels = device_labels()
+    person, macs = _person_scope(spec, by_mac, by_person)
+    per_day = min(max(int(request.args.get('per_day', 200) or 200), 1), 1000)
+    now = datetime.utcnow()
+
+    try:
+        rows = intel_store.equery(IntelSiteSession).filter(
+            IntelSiteSession.last_seen >= spec['start'],
+            IntelSiteSession.last_seen < spec['end']).all()
+    except Exception as exc:
+        return jsonify({'error': str(exc)}), 500
+    if macs:
+        rows = [r for r in rows if (r.device_mac or '').lower() in macs]
+
+    days = {}
+    for row in sorted(rows, key=lambda r: r.last_seen or now, reverse=True):
+        day = (row.last_seen or row.first_seen or now).strftime('%Y-%m-%d')
+        bucket = days.setdefault(day, {'day': day, 'seconds': 0, 'entries': [],
+                                       'categories': {}, 'apps': {}, 'bytes': 0})
+        seconds = int(row.dwell_seconds or 0)
+        bucket['seconds'] += seconds
+        bucket['bytes'] += int(row.bytes_total or 0)
+        if row.category:
+            bucket['categories'][row.category] = bucket['categories'].get(row.category, 0) + seconds
+        if row.app:
+            bucket['apps'][row.app] = bucket['apps'].get(row.app, 0) + seconds
+        if len(bucket['entries']) >= per_day:
+            continue
+        started = row.first_seen or row.last_seen or now
+        mac = (row.device_mac or '').lower()
+        mapped = by_mac.get(mac) or {}
+        age = (now - (row.last_seen or now)).total_seconds()
+        bucket['entries'].append({
+            'time': started.strftime('%H:%M'),
+            'end_time': (row.last_seen or started).strftime('%H:%M'),
+            'at': started.isoformat(),
+            'url': row.url_last or (f'https://{row.hostname}/' if row.hostname else None),
+            'domain': row.root_domain,
+            'hostname': row.hostname,
+            'app': row.app,
+            'category': row.category,
+            'seconds': seconds,
+            'human': _hms(seconds),
+            'span_human': _hms(row.span_seconds),
+            'bytes': int(row.bytes_total or 0),
+            'device': mac,
+            'device_name': (labels.get(mac) or {}).get('name') or mac,
+            'person': mapped.get('person_name'),
+            'certain': bool(mapped.get('locked')),
+            'estimated': bool(row.is_estimated),
+            'is_live': age <= 60,
+            'is_delayed': bool(row.source and row.source != 'live'),
+            'freshness': 'live' if age <= 60 else ('recent' if age <= 900 else 'delayed'),
+        })
+
+    out = []
+    for day in sorted(days, reverse=True):
+        bucket = days[day]
+        bucket['human'] = _hms(bucket['seconds'])
+        bucket['visit_count'] = len(bucket['entries'])
+        bucket['top_categories'] = sorted(
+            [{'key': k, 'seconds': v, 'human': _hms(v)} for k, v in bucket['categories'].items()],
+            key=lambda x: -x['seconds'])[:4]
+        bucket['top_apps'] = sorted(
+            [{'key': k, 'seconds': v, 'human': _hms(v)} for k, v in bucket['apps'].items()],
+            key=lambda x: -x['seconds'])[:4]
+        bucket.pop('categories', None)
+        bucket.pop('apps', None)
+        out.append(bucket)
+
+    return jsonify({
+        'range': spec['range'], 'start': spec['start_date'], 'end': spec['end_date'],
+        'person': ({'id': person.id, 'name': person.display_name or person.name}
+                   if person else None),
+        'days': out,
+        'totals': {
+            'seconds': sum(d['seconds'] for d in out),
+            'human': _hms(sum(d['seconds'] for d in out)),
+            'visits': sum(d['visit_count'] for d in out),
+            'days': len(out),
+        },
+    })
+
+
+# ---------------------------------------------------------------------------
+# /top - most frequent URLs / sites / apps / categories
+# ---------------------------------------------------------------------------
+
+@history_bp.route('/top')
+def top_items():
+    """The "most frequent" lists: by visits and by time, with byte volume."""
+    spec = _filters()
+    by_mac, by_person = identity_maps()
+    person, macs = _person_scope(spec, by_mac, by_person)
+    dimension = (request.args.get('dimension') or 'url').lower()
+    limit = min(max(int(request.args.get('limit', 20) or 20), 1), 100)
+    order = (request.args.get('order') or 'seconds').lower()   # seconds | visits | bytes
+
+    items = {}
+    if dimension in ('url', 'site'):
+        try:
+            rows = intel_store.equery(IntelSiteSession).filter(
+                IntelSiteSession.last_seen >= spec['start'],
+                IntelSiteSession.last_seen < spec['end']).all()
+        except Exception as exc:
+            return jsonify({'error': str(exc)}), 500
+        if macs:
+            rows = [r for r in rows if (r.device_mac or '').lower() in macs]
+        for row in rows:
+            key = (row.url_last or row.hostname or row.root_domain
+                   if dimension == 'url' else row.root_domain)
+            if not key:
+                continue
+            entry = items.setdefault(key, {
+                'key': key, 'domain': row.root_domain,
+                'app': row.app, 'category': row.category,
+                'seconds': 0, 'visits': 0, 'bytes': 0, 'devices': set(),
+                'last_seen': None, 'first_seen': None})
+            entry['seconds'] += int(row.dwell_seconds or 0)
+            entry['visits'] += 1
+            entry['bytes'] += int(row.bytes_total or 0)
+            if row.device_mac:
+                entry['devices'].add((row.device_mac or '').lower())
+            if row.last_seen and (not entry['last_seen'] or row.last_seen > entry['last_seen']):
+                entry['last_seen'] = row.last_seen
+            if row.first_seen and (not entry['first_seen'] or row.first_seen < entry['first_seen']):
+                entry['first_seen'] = row.first_seen
+    else:
+        if dimension not in ('app', 'category', 'device'):
+            dimension = 'app'
+        try:
+            rows = intel_store.equery(IntelDailyUsage).filter(
+                IntelDailyUsage.day >= spec['start_date'],
+                IntelDailyUsage.day <= spec['end_date'],
+                IntelDailyUsage.dimension == dimension).all()
+        except Exception as exc:
+            return jsonify({'error': str(exc)}), 500
+        if macs:
+            rows = [r for r in rows if (r.device_mac or '').lower() in macs]
+        name_categories = app_categories() if dimension == 'app' else {}
+        for row in rows:
+            key = row.key or 'Unknown'
+            entry = items.setdefault(key, {
+                'key': key, 'domain': key if dimension == 'category' else None,
+                'app': key if dimension in ('app', 'device') else None,
+                'category': (row.key if dimension == 'category'
+                             else (name_categories.get(key.lower()) if dimension == 'app'
+                                   else None)),
+                'seconds': 0, 'visits': 0, 'bytes': 0, 'devices': set(),
+                'last_seen': None, 'first_seen': None})
+            entry['seconds'] += int(row.seconds or 0)
+            entry['visits'] += int(row.sessions or 0)
+            entry['bytes'] += int(row.bytes_total or 0)
+            if row.device_mac:
+                entry['devices'].add((row.device_mac or '').lower())
+            if row.last_seen and (not entry['last_seen'] or row.last_seen > entry['last_seen']):
+                entry['last_seen'] = row.last_seen
+            if row.first_seen and (not entry['first_seen'] or row.first_seen < entry['first_seen']):
+                entry['first_seen'] = row.first_seen
+
+    total_seconds = sum(v['seconds'] for v in items.values()) or 1
+    out = []
+    for entry in items.values():
+        out.append({
+            'key': entry['key'],
+            'label': entry['app'] or entry['key'],
+            'domain': entry['domain'],
+            'app': entry['app'],
+            'category': entry['category'],
+            'seconds': entry['seconds'],
+            'human': _hms(entry['seconds']),
+            'visits': entry['visits'],
+            'bytes': entry['bytes'],
+            'mb': round(entry['bytes'] / (1024 * 1024.0), 2),
+            'share': round(entry['seconds'] / total_seconds, 4),
+            'devices': sorted(entry['devices']),
+            'first_seen': _iso(entry['first_seen']),
+            'last_seen': _iso(entry['last_seen']),
+        })
+    key_func = {'visits': lambda x: -x['visits'], 'bytes': lambda x: -x['bytes']}.get(
+        order, lambda x: -x['seconds'])
+    out.sort(key=key_func)
+    return jsonify({
+        'dimension': dimension, 'order': order, 'range': spec['range'],
+        'start': spec['start_date'], 'end': spec['end_date'],
+        'person': ({'id': person.id, 'name': person.display_name or person.name}
+                   if person else None),
+        'items': out[:limit],
+        'totals': {'distinct': len(out), 'seconds': sum(v['seconds'] for v in items.values()),
+                   'visits': sum(v['visits'] for v in items.values()),
+                   'bytes': sum(v['bytes'] for v in items.values())},
     })

@@ -134,6 +134,7 @@
   .sev-warning{color:#e3b341}
   .sev-info{color:#79c0ff}
 </style>
+  <link rel="stylesheet" href="/static/analytics.css">
 </head>
 <body>
 <header>
@@ -154,6 +155,7 @@
     <button data-tab="devices">Devices &amp; MACs</button>
     <button data-tab="identity">Identity</button>
     <button data-tab="bypass">VPN / bypass</button>
+    <button data-tab="analytics">Analytics &amp; charts</button>
     <button data-tab="people">People &amp; calendar</button>
     <button data-tab="alerts">Alerts</button>
     <button data-tab="searches">Searches</button>
@@ -400,6 +402,88 @@
       <div class="body flush scroll"><table id="gameTable"></table></div></div>
     <div class="panel"><div class="head"><h2>Per person</h2></div>
       <div class="body flush"><table id="gamePeople"></table></div></div>
+  </section>
+
+  <!-- ========================== ANALYTICS ========================== -->
+  <section id="tab-analytics">
+    <div class="ana-toolbar">
+      <label>Person</label>
+      <select id="anaPerson"><option value="">All people</option></select>
+      <label>Range</label>
+      <select id="anaRange">
+        <option value="day">today</option>
+        <option value="yesterday">yesterday</option>
+        <option value="week" selected>last 7 days</option>
+        <option value="fortnight">14 days</option>
+        <option value="month">30 days</option>
+        <option value="quarter">90 days</option>
+        <option value="6months">6 months</option>
+      </select>
+      <div class="ana-seg">
+        <button data-ana-view="heat" class="active">heat map</button>
+        <button data-ana-view="hours">hours</button>
+        <button data-ana-view="stacked">per day</button>
+        <button data-ana-view="volume">data</button>
+        <button data-ana-view="timeline">timeline</button>
+      </div>
+      <span class="spacer"></span>
+      <button class="btn" id="anaRefresh">refresh</button>
+    </div>
+
+    <div class="kpis" id="anaKpis"></div>
+
+    <div class="panel">
+      <div class="head"><h2>Usage heat map</h2>
+        <span class="sub">every day × every hour, midnight → 23:59 · darker green = more time ·
+          click a cell or a day for what was used</span></div>
+      <div class="body"><div id="anaHeat"><div class="empty">loading…</div></div></div>
+    </div>
+
+    <div class="ana-grid-2">
+      <div class="panel" data-ana-pane="heat">
+        <div class="head"><h2>Most frequent hours</h2><span class="sub">when is the house busiest</span></div>
+        <div class="body"><div id="anaHours"><div class="empty">loading…</div></div></div>
+      </div>
+      <div class="panel" data-ana-pane="stacked volume">
+        <div class="head"><h2 id="anaStackedTitle">Time per day</h2>
+          <span class="sub" id="anaVolumeNote"></span></div>
+        <div class="body"><div id="anaStacked"><div class="empty">loading…</div></div></div>
+      </div>
+    </div>
+
+    <div class="panel" data-ana-pane="timeline">
+      <div class="head"><h2>Day timeline</h2>
+        <span class="sub">who was online, when, and what they were doing</span></div>
+      <div class="body"><div id="anaTimeline"><div class="empty">loading…</div></div></div>
+    </div>
+
+    <div class="panel" id="anaDayPanel" style="display:none"></div>
+
+    <div class="ana-grid-2">
+      <div class="panel">
+        <div class="head"><h2>Per person</h2><span class="sub">time in the selected range</span></div>
+        <div class="body"><div id="anaPeople"><div class="empty">loading…</div></div></div>
+      </div>
+      <div class="panel">
+        <div class="head"><h2>Most frequent</h2>
+          <span class="spacer"></span>
+          <select id="anaTopDim">
+            <option value="url">URLs</option>
+            <option value="site">sites</option>
+            <option value="app">apps</option>
+            <option value="category">categories</option>
+          </select>
+          <select id="anaTopOrder">
+            <option value="seconds">by time</option>
+            <option value="visits">by visits</option>
+            <option value="bytes">by data</option>
+          </select>
+        </div>
+        <div class="body flush scroll" style="max-height:420px">
+          <div id="anaTop"><div class="empty">loading…</div></div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- =========================== QUALITY =========================== -->
@@ -1294,7 +1378,16 @@ async function loadGames(){
 
 const LOADERS = {now:loadNow, today:loadToday, urls:loadUrls, devices:loadDevices,
   identity:loadIdentity, bypass:loadBypass, people:loadPeople, alerts:loadAlerts,
-  searches:loadSearches, games:loadGames, quality:loadQuality, events:loadEvents};
+  searches:loadSearches, games:loadGames, analytics:loadAnalytics,
+  quality:loadQuality, events:loadEvents};
+
+// the analytics tab owns its own controls; wire them on first load
+let analyticsReady = false;
+const _loadAnalytics = loadAnalytics;
+loadAnalytics = async function(){
+  if (!analyticsReady) { initAnalytics(); analyticsReady = true; }
+  await _loadAnalytics();
+};
 function showTab(name){
   state.tab = name;
   $$('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab===name));
@@ -1407,5 +1500,6 @@ setInterval(() => { if(!document.hidden) loadHeader(); }, 30000);
 $('#dayPick').value = new Date().toISOString().slice(0,10);
 showTab('now');
 </script>
+  <script src="/static/analytics.js"></script>
 </body>
 </html>
