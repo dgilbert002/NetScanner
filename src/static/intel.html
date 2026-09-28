@@ -134,7 +134,7 @@
   .sev-warning{color:#e3b341}
   .sev-info{color:#79c0ff}
 </style>
-  <link rel="stylesheet" href="/static/analytics.css">
+  <link rel="stylesheet" href="/static/analytics.css?v=3">
 </head>
 <body>
 <header>
@@ -1376,18 +1376,18 @@ async function loadGames(){
     : emptyRow(5, 'No people yet', 'Add people on the Identity tab to attribute gaming time.');
 }
 
+// Function declarations are hoisted, so this is safe to name even though
+// analytics.js (which defines the real loader) is fetched afterwards.
+function analyticsTab(){
+  return (typeof window.loadAnalytics === 'function')
+    ? window.loadAnalytics()
+    : Promise.resolve();
+}
+
 const LOADERS = {now:loadNow, today:loadToday, urls:loadUrls, devices:loadDevices,
   identity:loadIdentity, bypass:loadBypass, people:loadPeople, alerts:loadAlerts,
-  searches:loadSearches, games:loadGames, analytics:loadAnalytics,
+  searches:loadSearches, games:loadGames, analytics:analyticsTab,
   quality:loadQuality, events:loadEvents};
-
-// the analytics tab owns its own controls; wire them on first load
-let analyticsReady = false;
-const _loadAnalytics = loadAnalytics;
-loadAnalytics = async function(){
-  if (!analyticsReady) { initAnalytics(); analyticsReady = true; }
-  await _loadAnalytics();
-};
 function showTab(name){
   state.tab = name;
   $$('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab===name));
@@ -1500,6 +1500,6 @@ setInterval(() => { if(!document.hidden) loadHeader(); }, 30000);
 $('#dayPick').value = new Date().toISOString().slice(0,10);
 showTab('now');
 </script>
-  <script src="/static/analytics.js"></script>
+  <script src="/static/analytics.js?v=3"></script>
 </body>
 </html>

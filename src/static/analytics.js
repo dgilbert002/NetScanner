@@ -234,8 +234,8 @@ function renderStacked(root, data, mode) {
 
 function renderTimeline(root, data) {
   if (!data.bands || !data.bands.length) {
-    root.innerHTML = emptyRow(3, 'Nothing recorded on ' + esc2(data.day || ''),
-      'Pick another day, or widen the range.');
+    root.innerHTML = '<div class="empty">Nothing recorded on ' + esc2(data.day || '') +
+      ' — pick another day, or widen the range.</div>';
     return;
   }
   const width = 760, rowH = 34, pad = 92, height = data.bands.length * rowH + 40;
@@ -315,7 +315,15 @@ async function loadTop() {
 
 /* ------------------------------ page wiring ---------------------------- */
 
+let analyticsReady = false;
+
 async function loadAnalytics() {
+  // controls are wired on first use, so the tab works whether it is opened by
+  // the tab bar or by a deep link (#analytics)
+  if (!analyticsReady) {
+    try { initAnalytics(); analyticsReady = true; }
+    catch (error) { setApiError('Analytics controls: ' + error.message); }
+  }
   const people = await api('/api/intel/people').catch(() => null);
   const pick = document.getElementById('anaPerson');
   if (pick) {
@@ -327,6 +335,11 @@ async function loadAnalytics() {
   }
   await refreshAnalytics();
 }
+
+// expose for the inline dashboard script (see analyticsTab() there)
+window.loadAnalytics = loadAnalytics;
+window.initAnalytics = initAnalytics;
+window.refreshAnalytics = refreshAnalytics;
 
 async function refreshAnalytics() {
   const person = document.getElementById('anaPerson');

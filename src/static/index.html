@@ -2070,7 +2070,7 @@
             display: block;
         }
     </style>
-    <link rel="stylesheet" href="/static/history.css">
+    <link rel="stylesheet" href="/static/history.css?v=3">
 </head>
 <body>
     <!-- Status Bar -->
@@ -2109,6 +2109,23 @@
                     </a>
                 </li>
                 
+                <li class="nav-item">
+                    <a href="#history" class="nav-link" onclick="showSection('history')">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M13 3a9 9 0 1 0 8.94 10.06h-2.02A7 7 0 1 1 13 5v3l4.5-4.5L13 0v3zm-5 8h5v2H8v-2zm0 4h7v2H8v-2z"/>
+                        </svg>
+                        <span>History</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#people" class="nav-link" onclick="showSection('people')">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+                        </svg>
+                        <span>People</span>
+                        <span class="badge" id="people-badge" style="display:none;">0</span>
+                    </a>
+                </li>
                 <li class="nav-item">
                     <a href="#devices" class="nav-link" onclick="showSection('devices')">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
@@ -2484,6 +2501,28 @@
                             </div>
                         </section>
                     </div>
+                </div>
+            </div>
+
+            <div id="history-section" class="tab-content">
+                <div class="hscreen">
+                    <div class="hscreen-head">
+                        <h2>History</h2>
+                        <span class="hsub">what was visited, in order, newest first</span>
+                        <span class="hspacer"></span>
+                        <a class="hbtn" href="/intel#analytics">charts &amp; heat maps →</a>
+                    </div>
+                    <div id="historyBody" class="hshell"></div>
+                </div>
+            </div>
+
+            <div id="people-section" class="tab-content">
+                <div class="hscreen">
+                    <div class="hscreen-head">
+                        <h2>People &amp; devices</h2>
+                        <span class="hsub">who each device belongs to</span>
+                    </div>
+                    <div id="peopleHost" class="hshell"><div class="hempty">loading…</div></div>
                 </div>
             </div>
 
@@ -3611,6 +3650,12 @@
 
         // Navigation functions
         function showSection(section) {
+            // History and People render themselves once their tab is visible;
+            // calling this must never break the existing sections.
+            try {
+                if (window.histShowSection) setTimeout(() => window.histShowSection(section), 0);
+            } catch (error) { console.warn('section hook', error); }
+
             // Hide all sections
             document.querySelectorAll('.tab-content').forEach(el => {
                 el.classList.remove('active');
@@ -5599,7 +5644,7 @@
             liveData.filters.statuses = liveData.filters.statuses || [];
         }
     </script>
-    <script src="/static/history.js"></script>
+    <script src="/static/history.js?v=3"></script>
 </body>
 </html>
 </html>
