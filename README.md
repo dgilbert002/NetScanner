@@ -34,6 +34,14 @@ The intelligence dashboard (`/intel`) now has **People & calendar**, **Alerts**,
 Everything is stored locally in SQLite; nothing is uploaded and no paid service
 is used.
 
+To see these views before the collector has real history, run:
+
+```bash
+python scripts/demo_scenario.py   # throwaway database, prints every view
+```
+
+A captured transcript is in `docs/EXAMPLE_OUTPUT.md`.
+
 ## Two dashboards
 - **`http://<this-machine>:5002/`** — the classic dashboard (mock/sample data has
   been removed; it now shows real, time-stamped collector output plus a live
