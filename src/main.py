@@ -55,8 +55,21 @@ try:
 except ImportError:
     enhanced_services_available = False
 
+# ---------------------------------------------------------------------------
+# Intelligence layer (additive).  Importing the models module registers the new
+# tables with SQLAlchemy so db.create_all() below creates them.
+# ---------------------------------------------------------------------------
+INTEL_AVAILABLE = False
+intel_store = None
+try:
+    from src.intel import models as _intel_models          # noqa: F401
+    from src.intel import store as intel_store
+    INTEL_AVAILABLE = True
+except Exception as _intel_err:                             # pragma: no cover
+    print(f"⚠️  Intelligence layer unavailable: {_intel_err}")
+
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
-app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
+app.config['SECRET_KEY'] = os.getenv('NETSCANNER_SECRET_KEY', 'asdf#FGSgvasgf$5$WGT')
 
 # Enable CORS for all routes
 CORS(app)
@@ -117,6 +130,22 @@ try:
 except ImportError as e:
     print(f"⚠️ Could not load settings: {e}")
 
+# Register the intelligence API (evidence, sessions, behaviour, VPN detection)
+INTEL_ROUTES_AVAILABLE = False
+if INTEL_AVAILABLE:
+    try:
+        from src.routes.intel import intel_bp
+        app.register_blueprint(intel_bp)
+        INTEL_ROUTES_AVAILABLE = True
+        print("✅ Intelligence API loaded (/api/intel)")
+    except Exception as e:
+        print(f"⚠️ Could not load intelligence API: {e}")
+
+# Serve the intelligence dashboard
+@app.route('/intel')
+def intel_page():
+    return app.send_static_file('intel.html')
+
 # Serve group management page
 @app.route('/groups')
 def groups_page():
@@ -132,8 +161,24 @@ def serve_prototype(page):
     return jsonify({'error': 'prototype not found'}), 404
 
 # Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'database', 'enhanced_network_monitor.db')}"
+_database_dir = os.path.join(os.path.dirname(__file__), 'database')
+os.makedirs(_database_dir, exist_ok=True)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
+    'NETSCANNER_DB_URI',
+    f"sqlite:///{os.path.join(_database_dir, 'enhanced_network_monitor.db')}")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,
+    'connect_args': {'timeout': 30, 'check_same_thread': False},
+}
+
+# Reliability: WAL journal + busy timeout + sane cache (removes most
+# "database is locked" failures the legacy per-packet commits caused).
+if intel_store is not None:
+    try:
+        intel_store.configure_sqlite(app)
+    except Exception as _pragma_err:
+        print(f"⚠️  Could not configure SQLite pragmas: {_pragma_err}")
 
 # Initialize database
 db.init_app(app)
@@ -153,12 +198,22 @@ if enhanced_services_available:
 try:
     from src.cross_platform_capture import CrossPlatformCapture
     from src.enrichment_worker import EnrichmentWorker
-    realtime_capture = CrossPlatformCapture(app_context=app)
-    # Auto-start monitoring on app launch
-    realtime_capture.start_capture()
-    print(f"✅ Real-time network monitoring started automatically on {realtime_capture.platform}!")
-    print(f"   Interface: {realtime_capture.interface}")
-    print(f"   Method: {'Scapy' if realtime_capture.platform == 'Linux' or (realtime_capture.platform == 'Windows' and realtime_capture._check_npcap()) else 'Netstat'}")
+
+    if INTEL_AVAILABLE:
+        # The intelligence engine owns capture when it is present: it uses a
+        # real 5-tuple session key, batches writes and closes sessions on idle.
+        # Running the legacy per-packet capture alongside it would double the
+        # load on SQLite without adding information.
+        realtime_capture = None
+        print("ℹ️  Legacy capture disabled — the intelligence engine owns capture")
+    else:
+        realtime_capture = CrossPlatformCapture(app_context=app)
+        # Auto-start monitoring on app launch
+        realtime_capture.start_capture()
+        print(f"✅ Real-time network monitoring started automatically on {realtime_capture.platform}!")
+        print(f"   Interface: {realtime_capture.interface}")
+        print(f"   Method: {'Scapy' if realtime_capture.platform == 'Linux' or (realtime_capture.platform == 'Windows' and realtime_capture._check_npcap()) else 'Netstat'}")
+
     
     # Start enrichment worker
     enrichment_worker = EnrichmentWorker(app=app, ttl_hours=24)
@@ -333,8 +388,11 @@ try:
                 finally:
                     time.sleep(3)
 
-    _t = threading.Thread(target=_session_logger_loop, daemon=True)
-    _t.start()
+    if not INTEL_AVAILABLE:
+        # The intelligence engine owns session logging when it is available;
+        # this legacy 3-second logger would only duplicate its work.
+        _t = threading.Thread(target=_session_logger_loop, daemon=True)
+        _t.start()
 except Exception as e:
     print(f"⚠️ Could not start real-time capture: {e}")
     realtime_capture = None
@@ -507,8 +565,33 @@ def get_hostnames():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# ---------------------------------------------------------------------------
+# Schema + intelligence engine startup
+# ---------------------------------------------------------------------------
+INTEL_ENGINE = None
+
 with app.app_context():
     db.create_all()
+    if intel_store is not None:
+        created = intel_store.ensure_indexes()
+        if created:
+            print(f"✅ Added {len(created)} database indexes")
+    # Start the intelligence engine (evidence -> sessions -> behaviour -> VPN)
+    if INTEL_AVAILABLE and INTEL_ROUTES_AVAILABLE and \
+            os.getenv('NETSCANNER_INTEL', '1').lower() not in ('0', 'false', 'no'):
+        try:
+            from src.intel.engine import get_engine
+            INTEL_ENGINE = get_engine(app=app)
+            capture_disabled = os.getenv('NETSCANNER_INTEL_CAPTURE', '1').lower() in ('0', 'false', 'no')
+            INTEL_ENGINE.start(with_capture=not capture_disabled)
+            status = INTEL_ENGINE.status()
+            print("✅ Intelligence engine started")
+            print(f"   Capture: {(status.get('capture') or {}).get('mode', 'disabled')} "
+                  f"on {(status.get('capture') or {}).get('interface')}")
+            print("   API: /api/intel  •  Dashboard: /intel")
+        except Exception as _engine_err:
+            print(f"⚠️  Could not start intelligence engine: {_engine_err}")
+            INTEL_ENGINE = None
 
 @app.route('/')
 def serve_dashboard():
@@ -530,4 +613,9 @@ def serve_static(path):
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5002, debug=True)
+    # debug=True makes Flask's reloader import this module twice, which would
+    # start two capture engines and two sets of background workers.
+    _debug = os.getenv('NETSCANNER_DEBUG', '0').lower() in ('1', 'true', 'yes')
+    port = int(os.getenv('NETSCANNER_PORT', '5002'))
+    app.run(host=os.getenv('NETSCANNER_HOST', '0.0.0.0'), port=port,
+            debug=_debug, use_reloader=_debug, threaded=True)

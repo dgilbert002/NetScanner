@@ -2140,7 +2140,38 @@
 
     <!-- Main Content -->
     <main class="main-content" id="main-content">
-        <div id="demo-banner" style="display:none;background:#ffe5e5;color:#b00020;padding:8px 16px;text-align:center;font-weight:700;letter-spacing:0.5px;">DEMO MODE — Showing sample data</div>
+        <!-- Intelligence strip: real collector state, never sample data -->
+        <div id="intel-strip" class="intel-strip">
+            <style>
+              .intel-strip{background:#101922;border:1px solid #24313d;border-radius:10px;
+                padding:10px 14px;margin:0 0 14px;color:#e6edf3}
+              .intel-strip .isrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+              .intel-strip .isrow+.isrow{margin-top:8px}
+              .intel-strip .ischip{border:1px solid #35424f;border-radius:999px;padding:2px 9px;font-size:11.5px;color:#9fb0c0}
+              .intel-strip .ischip b{color:#e6edf3}
+              .intel-strip .ischip.ok{border-color:#2ea04366;color:#7ee787}
+              .intel-strip .ischip.bad{border-color:#f8514966;color:#ff9d96}
+              .intel-strip .ischip.warn{border-color:#d2992266;color:#e3b341}
+              .intel-strip .ischip.est{border-color:#a371f766;color:#c8a2ff}
+              .intel-strip .isstar{color:#e3b341}
+              .intel-strip .islabel{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#7d8b99}
+              .intel-strip a{color:#58a6ff;text-decoration:none;font-size:12.5px}
+              .intel-strip .istop{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:#c9d4de}
+              .intel-strip .isempty{color:#8b949e;font-size:12.5px}
+            </style>
+            <div class="isrow">
+              <strong style="font-size:13px">Live intelligence</strong>
+              <span class="ischip" id="is-engine">engine …</span>
+              <span class="ischip" id="is-capture">capture …</span>
+              <span class="ischip" id="is-live">— live now</span>
+              <span class="ischip" id="is-delayed">— delayed</span>
+              <span class="ischip" id="is-vpn">VPN checks …</span>
+              <span style="flex:1"></span>
+              <a href="/intel">Full intelligence dashboard →</a>
+            </div>
+            <div class="isrow" id="is-now"><span class="isempty">Loading current activity…</span></div>
+            <div class="isrow" id="is-today"><span class="isempty">Loading today's totals…</span></div>
+          </div>
         <div class="dashboard-content">
             <!-- Home Section -->
             <div id="home-section" class="tab-content active">
@@ -2567,9 +2598,8 @@
             alertCount: 0
         };
 
-        // Initialize Live tab data - SAMPLE DATA ONLY
+        // Initialize Live tab data from the real collector only.
         async function initializeLiveData() {
-            // Try real API first
             let usedDemo = false;
             try {
                 const res = await fetch('/api/live/sessions?hours=1');
@@ -2579,6 +2609,7 @@
                     liveData.sessions = data.sessions.map(s => ({
                         device: s.device,
                         deviceIp: s.deviceIp,
+                        deviceMac: s.deviceMac || s.device_mac || null,
                         category: s.category,
                         categoryId: s.categoryId,
                         app: s.app,
@@ -2590,6 +2621,8 @@
                         isActive: s.isActive,
                         hostname: s.hostname || null,
                         dstIp: s.dstIp || null,
+                        url: s.url || null,
+                        freshness: s.freshness || null,
                     }));
                 } else {
                     usedDemo = true;
@@ -2598,13 +2631,38 @@
                 usedDemo = true;
             }
 
-            if (usedDemo) {
-                liveData.sessions = generateSampleSessions();
-            }
+            // The intelligence layer names hosts, gives full URLs and says how
+            // fresh each row is; merge it onto the legacy rows by device/domain.
+            try {
+                const intel = await fetch('/api/intel/sessions?hours=1&limit=500').then(r => r.ok ? r.json() : null);
+                if (intel && Array.isArray(intel.sessions)) {
+                    const byKey = {};
+                    intel.sessions.forEach(x => {
+                        const key = ((x.device_mac || '') + '|' + (x.hostname || x.site || '')).toLowerCase();
+                        if (!byKey[key]) byKey[key] = x;
+                    });
+                    liveData.sessions.forEach(session => {
+                        const host = (session.hostname || '').toLowerCase();
+                        const mac = (session.deviceMac || '').toLowerCase();
+                        const match = byKey[mac + '|' + host]
+                            || Object.values(byKey).find(x => (x.device_mac || '').toLowerCase() === mac
+                                && host && ((x.hostname || '').toLowerCase().indexOf(host) >= 0
+                                    || host.indexOf(x.site || '\u0000') >= 0));
+                        if (match) {
+                            session.url = session.url || match.url || null;
+                            session.freshness = session.freshness || match.freshness || null;
+                            session.hostname = session.hostname || match.hostname || null;
+                            if (match.app && (!session.app || session.app === 'Unknown')) session.app = match.app;
+                        }
+                    });
+                }
+            } catch (e) { /* intel layer optional for this view */ }
 
-            // Banner
-            const banner = document.getElementById('demo-banner');
-            if (banner) banner.style.display = usedDemo ? 'block' : 'none';
+            // No sample rows, ever: an empty result is reported as empty.
+            if (usedDemo) {
+                liveData.sessions = [];
+                showEmptyNotice('No captured sessions yet — the collector reports an empty window honestly instead of inventing traffic. See /intel for collector state.');
+            }
 
             // Load all components
             loadLiveProfiles();
@@ -2615,65 +2673,202 @@
             updateAlertBadge();
         }
 
-        // Generate sample session data - SAMPLE DATA ONLY (100 rows with random dates)
-        function generateSampleSessions() {
-            const sessions = [];
-            const devices = [
-                { name: 'iPhone 12', ip: '192.168.1.100', profile: 'profile_1' },
-                { name: 'MacBook Pro', ip: '192.168.1.101', profile: 'profile_2' },
-                { name: 'PlayStation 5', ip: '192.168.1.102', profile: 'profile_3' },
-                { name: 'iPad', ip: '192.168.1.103', profile: 'profile_1' },
-                { name: 'Samsung Galaxy', ip: '192.168.1.104', profile: 'profile_2' },
-                { name: 'Dell Laptop', ip: '192.168.1.105', profile: 'profile_3' },
-                { name: 'Xbox One', ip: '192.168.1.106', profile: 'profile_1' },
-                { name: 'Surface Pro', ip: '192.168.1.107', profile: 'profile_2' }
-            ];
-
-            const apps = liveData.apps;
-            const categories = liveData.categories;
-            
-            // Generate 100 sessions with random dates over the last 7 days
-            for (let i = 0; i < 100; i++) {
-                const device = devices[Math.floor(Math.random() * devices.length)];
-                const app = apps[Math.floor(Math.random() * apps.length)];
-                const category = categories.find(c => c.id === app.category);
-                
-                // Random time within last 7 days
-                const randomDays = Math.random() * 7;
-                const randomHours = Math.random() * 24;
-                const randomMinutes = Math.random() * 60;
-                const startTime = new Date(Date.now() - (randomDays * 24 * 60 * 60 * 1000) - (randomHours * 60 * 60 * 1000) - (randomMinutes * 60 * 1000));
-                
-                const duration = Math.floor(Math.random() * 120) + 1; // 1-120 minutes
-                const isActive = Math.random() > 0.4; // 60% chance of being active
-                const dataBytes = Math.floor(Math.random() * 100 * 1024 * 1024); // Up to 100MB
-                
-                sessions.push({
-                    id: `session_${i}`,
-                    device: device.name,
-                    deviceIp: device.ip,
-                    profile: device.profile,
-                    category: category.name,
-                    categoryId: category.id,
-                    app: app.name,
-                    appId: app.id,
-                    url: app.url,
-                    startTime: startTime,
-                    duration: duration,
-                    isActive: isActive,
-                    dataBytes: dataBytes,
-                    lastSeen: isActive ? new Date() : new Date(startTime.getTime() + duration * 60000),
-                    hasAlert: Math.random() > 0.85 // 15% chance of having an alert
-                });
-            }
-            
-            // Sort by most recent activity first
-            return sessions.sort((a, b) => b.lastSeen - a.lastSeen);
+        // Sample-session generation removed on purpose: the dashboard must never
+        // mix invented rows into real data.  Empty windows stay empty and say so.
+        function showEmptyNotice(message) {
+            const host = document.getElementById('traffic-tbody');
+            if (!host) return;
+            host.innerHTML = '<tr><td colspan="7" style="padding:22px;text-align:center;color:#8b949e">'
+                + String(message || 'No data for this window.').replace(/[<>&]/g, '') + '</td></tr>';
         }
 
         // Load Live tab data
         function loadLiveData() {
             initializeLiveData();
+            loadIntelStrip();
+        }
+
+        // ------------------------------------------------------------------
+        // Intelligence strip - real collector state, provenance and stars.
+        // ------------------------------------------------------------------
+        const intelCache = { devices: {}, stars: {}, personDevices: {}, live: null, delayed: 0 };
+
+        function isChip(id, text, cls) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = text;
+            el.className = 'ischip' + (cls ? ' ' + cls : '');
+        }
+
+        async function loadIntelStrip() {
+            if (!document.getElementById('intel-strip')) return;
+            try {
+                const [status, live, devices, identity, quality] = await Promise.all([
+                    fetch('/api/intel/status').then(r => r.ok ? r.json() : null),
+                    fetch('/api/intel/live?limit=30').then(r => r.ok ? r.json() : null),
+                    fetch('/api/intel/devices').then(r => r.ok ? r.json() : null),
+                    fetch('/api/intel/identity').then(r => r.ok ? r.json() : null),
+                    fetch('/api/intel/quality').then(r => r.ok ? r.json() : null)
+                ]);
+                if (!status) { isChip('is-engine', 'intelligence offline', 'bad'); return; }
+
+                isChip('is-engine', status.running ? 'engine running' : 'engine stopped',
+                       status.running ? 'ok' : 'bad');
+                const cap = status.capture || {};
+                isChip('is-capture', 'capture ' + (cap.running ? (cap.mode || 'on') : 'off'),
+                       cap.running ? 'ok' : 'warn');
+
+                // devices + stars
+                (devices && devices.devices ? devices.devices : []).forEach(d => {
+                    intelCache.devices[(d.mac || '').toLowerCase()] = d;
+                    if (d.star) intelCache.stars[(d.mac || '').toLowerCase()] = d.star;
+                });
+
+                // identity -> person devices
+                const people = (identity && identity.people) ? identity.people : [];
+                const profById = {};
+                people.forEach(p => { profById[p.name] = p; });
+                (identity && identity.devices ? identity.devices : []).forEach(d => {
+                    const best = d.best;
+                    if (!best || !best.person_name) return;
+                    const mac = (d.device_mac || '').toLowerCase();
+                    const key = best.person_name;
+                    const slot = intelCache.personDevices[key] || (intelCache.personDevices[key] = {
+                        macs: [], online: false, lastSeen: null, lastDevice: null, seconds: 0,
+                        probability: 0, star: null, randomMac: false, review: false
+                    });
+                    slot.macs.push(mac);
+                    slot.probability = Math.max(slot.probability, best.probability || 0);
+                    slot.star = slot.star || d.star || null;
+                    slot.randomMac = slot.randomMac || !!d.is_randomized;
+                    slot.review = slot.review || !!d.needs_review;
+                });
+                (devices && devices.devices ? devices.devices : []).forEach(d => {
+                    const mac = (d.mac || '').toLowerCase();
+                    const person = ((identity && identity.devices) || []).find(x => x.device_mac === mac);
+                    if (!person || !person.best || !person.best.person_name) return;
+                    const slot = intelCache.personDevices[person.best.person_name];
+                    if (!slot) return;
+                    slot.seconds += d.online_today_seconds || 0;
+                    const seen = d.last_seen ? new Date(d.last_seen) : null;
+                    if (seen && (!slot.lastSeen || seen > slot.lastSeen)) {
+                        slot.lastSeen = seen;
+                        slot.lastDevice = d.name || mac;
+                    }
+                    if (d.freshness && (d.freshness.state === 'live' || d.freshness.state === 'idle')) {
+                        slot.online = true;
+                    }
+                });
+
+                // live vs delayed split
+                const sessions = (live && live.sessions) ? live.sessions : [];
+                const liveCount = sessions.filter(x => x.freshness && x.freshness.state === 'live').length;
+                const delayed = sessions.filter(x => x.freshness && x.freshness.is_delayed).length
+                    + ((quality && quality.flows && quality.flows.estimated_24h) || 0);
+                intelCache.live = live;
+                intelCache.delayed = delayed;
+                isChip('is-live', liveCount + ' live now', liveCount ? 'ok' : '');
+                isChip('is-delayed', delayed + ' delayed/estimated', delayed ? 'warn' : '');
+                const vpn = (identity && identity.vpn) || null;
+                fetch('/api/intel/vpn?hours=24').then(r => r.ok ? r.json() : null).then(v => {
+                    if (!v) return;
+                    isChip('is-vpn', (v.flagged_devices || 0) + ' device(s) flagged',
+                           v.flagged_devices ? 'bad' : 'ok');
+                }).catch(() => {});
+                if (quality && quality.health) {
+                    isChip('is-delayed', delayed + ' delayed/estimated · ' +
+                        (quality.health.lagging_sources || 0) + ' source(s) lagging',
+                        (delayed || (quality.health.lagging_sources || 0)) ? 'warn' : '');
+                }
+
+                // what is in use right now
+                const nowEl = document.getElementById('is-now');
+                if (nowEl) {
+                    if (!sessions.length) {
+                        nowEl.innerHTML = '<span class="isempty">Nothing seen in the idle window — '
+                            + 'the collector is running and honestly reports no activity.</span>';
+                    } else {
+                        nowEl.innerHTML = '<span class="islabel">in use now</span>' + sessions.slice(0, 8).map(x => {
+                            const f = x.freshness || {};
+                            const chip = f.state === 'live' ? 'ok' : (f.is_estimated ? 'est' : '');
+                            const star = x.star ? ' <span class="isstar" title="' + (x.star.title || 'identity moved')
+                                .replace(/"/g, '') + '">&#9733;</span>' : '';
+                            const who = String(x.device || x.device_mac || 'unknown');
+                            const label = String(x.app || x.site || 'unknown');
+                            const dur = String(x.duration_human || '');
+                            const url = x.url ? ' · ' + String(x.url) : '';
+                            return '<span class="ischip ' + chip + '">' + escapeHtml(who) + ' → '
+                                + escapeHtml(label) + star + ' · ' + escapeHtml(dur)
+                                + escapeHtml(url) + '</span>';
+                        }).join(' ');
+                    }
+                }
+
+                // today's totals
+                const todayEl = document.getElementById('is-today');
+                fetch('/api/intel/apps').then(r => r.ok ? r.json() : null).then(apps => {
+                    if (!todayEl) return;
+                    const items = (apps && apps.items) ? apps.items.slice(0, 6) : [];
+                    const deviceCount = Object.keys(intelCache.devices).length;
+                    const starred = Object.values(intelCache.devices).filter(d => d.star).length;
+                    const head = '<span class="islabel">today</span>'
+                        + '<span class="ischip">' + deviceCount + ' device(s) tracked</span>'
+                        + (starred ? '<span class="ischip warn">' + starred + ' MAC move(s) <span class="isstar">&#9733;</span></span>' : '');
+                    if (!items.length) {
+                        todayEl.innerHTML = head + '<span class="isempty" style="margin-left:10px">'
+                            + 'no app time recorded yet today</span>';
+                    } else {
+                        todayEl.innerHTML = head + items.map(i =>
+                            '<span class="ischip">' + escapeHtml(String(i.name || i.key)) + ' · '
+                            + escapeHtml(String(i.duration_human || '')) + '</span>').join('');
+                    }
+                }).catch(() => {});
+                // Profile cards read the same cache; re-render if they are on screen.
+                if (typeof loadProfiles === 'function' && currentSection === 'home'
+                        && document.getElementById('profiles-grid')) {
+                    loadProfiles();
+                }
+            } catch (e) {
+                isChip('is-engine', 'intelligence unreachable', 'bad');
+            }
+        }
+
+        function escapeHtml(value) {
+            return String(value === null || value === undefined ? '' : value)
+                .replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+        }
+
+        function intelBadges(session) {
+            const mac = (session.deviceMac || '').toLowerCase();
+            const star = intelCache.stars[mac];
+            let out = '';
+            if (star) {
+                out += ' <span title="' + escapeHtml(star.title || 'MAC / identity change') + '" '
+                    + 'style="color:#e3b341;font-size:13px">&#9733;</span>';
+            }
+            const device = intelCache.devices[mac];
+            if (device && device.is_randomized) {
+                out += ' <span style="font-size:10px;border:1px solid #35424f;border-radius:5px;padding:0 4px;color:#9fb0c0" '
+                    + 'title="private Wi-Fi address (hide-my-MAC)">random MAC</span>';
+            }
+            return out;
+        }
+
+        function intelFreshnessChip(session) {
+            const f = session.freshness;
+            if (!f) return '';
+            if (f.is_estimated) {
+                return ' <span style="font-size:10px;border:1px solid #a371f766;border-radius:5px;padding:0 4px;color:#c8a2ff" '
+                    + 'title="inferred from a connection table, not a packet">estimated</span>';
+            }
+            if (f.is_delayed) {
+                return ' <span style="font-size:10px;border:1px solid #d2992266;border-radius:5px;padding:0 4px;color:#e3b341" '
+                    + 'title="reported by a slower source">delayed</span>';
+            }
+            if (f.state === 'live') {
+                return ' <span style="font-size:10px;border:1px solid #2ea04366;border-radius:5px;padding:0 4px;color:#7ee787">live</span>';
+            }
+            return '';
         }
 
         // Time filter functions
@@ -3191,7 +3386,7 @@
             row.innerHTML = `
                 <td class="clickable-cell" onclick="filterByValue('device', '${session.deviceIp}')">
                         <div class="device-info">
-                        <div class="device-name">${session.device}</div>
+                        <div class="device-name">${session.device}${intelBadges(session)}</div>
                         <div class="device-ip">${session.deviceIp}</div>
                             </div>
                 </td>
@@ -3200,8 +3395,9 @@
                 </td>
                 <td class="clickable-cell" onclick="filterByValue('app', '${session.appId}')">
                     <div class="accessing-info">
-                        <div class="accessing-app">${accessingLabel}</div>
+                        <div class="accessing-app">${accessingLabel}${intelFreshnessChip(session)}</div>
                         <div class="accessing-time">${formatTime(session.startTime)}</div>
+                        ${session.url ? `<div class="accessing-time" style="font-family:ui-monospace,Menlo,monospace;font-size:11px;word-break:break-all">${escapeHtml(session.url)}</div>` : ''}
                         </div>
                 </td>
                 <td>
@@ -3357,6 +3553,9 @@
             showSection(saved);
             startAutoRefresh();
             initializeTableSorting();
+            // Intelligence strip: real collector state, refreshed on its own.
+            loadIntelStrip();
+            setInterval(() => { if (!document.hidden) loadIntelStrip(); }, 20000);
             
             // Handle page refresh
             window.addEventListener('beforeunload', function() {
@@ -3573,15 +3772,20 @@
             card.className = 'profile-card';
             card.onclick = () => showProfileDetail(profile);
             
-            const status = getRandomStatus();
-            const lastSeen = getRandomLastSeen();
-            const lastDevice = getRandomDevice();
-            const lastAccessed = getRandomLastAccessed();
-            const timeOnline = getRandomTimeOnline();
-            const alertCount = Math.floor(Math.random() * 5); // Mock alert count
-            
-            // Calculate total time from categories (mock data)
-            const totalTime = '20h 5m'; // This would be calculated from actual category data
+            // Real values from the intelligence layer; unknown stays unknown.
+            const intel = intelCache.personDevices[profile.name] || null;
+            const status = intel && intel.online
+                ? { class: 'status-online', text: 'Online' }
+                : { class: 'status-offline', text: intel ? 'Offline' : 'Unknown' };
+            const lastSeen = intel && intel.lastSeen ? formatAgo(intel.lastSeen) : 'unknown';
+            const lastDevice = (intel && intel.lastDevice) ? intel.lastDevice : 'unknown';
+            const lastAccessed = intel && intel.probability
+                ? (intel.probability * 100).toFixed(0) + '% match'
+                    + (intel.randomMac ? ' (random MAC)' : '')
+                : 'unmatched';
+            const timeOnline = (intel && intel.seconds) ? formatDuration(Math.round(intel.seconds / 60)) : '0m';
+            const alertCount = (intel && intel.review) ? 1 : 0;
+            const totalTime = timeOnline;
             
             // Create avatar with image or initials
             let avatarContent = '';
@@ -3608,16 +3812,16 @@
                     <div class="stat-item">
                         <div class="stat-label">Last device:</div>
                         <div class="stat-value" style="display: flex; align-items: center; gap: 6px;">
-                            <div class="status-dot online" style="width: 6px; height: 6px;"></div>
-                            ${lastDevice}
+                            <div class="status-dot${intel && intel.online ? ' online' : ''}" style="width: 6px; height: 6px;"></div>
+                            ${escapeHtml(lastDevice)}${intel && intel.star ? ' <span style="color:#e3b341">&#9733;</span>' : ''}
                         </div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-label">Last accessed:</div>
+                        <div class="stat-label">Identity score:</div>
                         <div class="stat-value">${lastAccessed}</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-label">Time online:</div>
+                        <div class="stat-label">Time online today:</div>
                         <div class="stat-value">${totalTime}</div>
                     </div>
                 </div>
@@ -3627,33 +3831,13 @@
             return card;
         }
 
-        function getRandomStatus() {
-            const statuses = [
-                { class: 'status-online', text: 'Online' },
-                { class: 'status-away', text: 'Away' },
-                { class: 'status-offline', text: 'Offline' }
-            ];
-            return statuses[Math.floor(Math.random() * statuses.length)];
-        }
-
-        function getRandomLastSeen() {
-            const times = ['2 minutes ago', '15 minutes ago', '1 hour ago', '3 hours ago', 'Yesterday', '2 days ago'];
-            return times[Math.floor(Math.random() * times.length)];
-        }
-
-        function getRandomDevice() {
-            const devices = ['iPhone 14', 'MacBook Pro', 'iPad Air', 'Samsung Galaxy', 'Windows PC', 'Android Tablet'];
-            return devices[Math.floor(Math.random() * devices.length)];
-        }
-
-        function getRandomLastAccessed() {
-            const sites = ['YouTube', 'Instagram', 'TikTok', 'Netflix', 'Spotify', 'Gmail', 'Facebook'];
-            return sites[Math.floor(Math.random() * sites.length)];
-        }
-
-        function getRandomTimeOnline() {
-            const times = ['2h 15m', '45m', '6h 30m', '1h 20m', '4h 5m', '30m'];
-            return times[Math.floor(Math.random() * times.length)];
+        // Random profile stats were removed: every number on this page is measured.
+        function formatAgo(date) {
+            const seconds = Math.max(0, (Date.now() - date.getTime()) / 1000);
+            if (seconds < 60) return Math.round(seconds) + 's ago';
+            if (seconds < 3600) return Math.round(seconds / 60) + 'm ago';
+            if (seconds < 86400) return Math.round(seconds / 3600) + 'h ago';
+            return Math.round(seconds / 86400) + 'd ago';
         }
 
         function showProfileDetail(profile) {

@@ -1,5 +1,7 @@
 ﻿# Python
 venv/
+.venv*/
+.venv-test/
 __pycache__/
 *.pyc
 *.pyo
@@ -34,4 +36,17 @@ build/
 dist/
 *.egg-info/
 
-\n# Binaries\n*.exe\n*.msi\n*.zip\n
+# Binaries
+*.exe
+*.msi
+*.zip
+
+# Local databases (WAL sidecars included)
+src/database/*.db-shm
+src/database/*.db-wal
+
+# Feed caches downloaded at runtime (regenerate with: python -m src.intel.extdata --sync)
+src/data/feeds/
+
+# Test / tooling caches
+.pytest_cache/

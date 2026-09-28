@@ -14,6 +14,21 @@ Just **double-click `start.bat`** - it handles everything automatically!
 - Opens your web browser to the dashboard
 - Press any key in the command window to stop the server
 
+### Two dashboards
+- **`http://<this-machine>:5002/`** — the classic dashboard (mock/sample data has
+  been removed; it now shows real, time-stamped collector output plus a live
+  intelligence strip).
+- **`http://<this-machine>:5002/intel`** — the intelligence dashboard: what is in
+  use right now, what was used today, per-app/per-site time, full URLs, devices
+  including phones that rotate their MAC ("Hide My MAC"), identity probabilities
+  with ★ movement markers, VPN/proxy bypass findings and data quality.
+- **`http://<this-machine>:5002/api/intel/*`** — the JSON API behind both.
+
+See **[docs/INTELLIGENCE.md](docs/INTELLIGENCE.md)** for the architecture, the
+API surface, the maths behind the time accounting and identity scoring, the
+verification results and the known limits. `python -m pytest tests/ -q` runs the
+48-test suite.
+
 ## 📁 Project Structure
 
 ```
@@ -35,6 +50,8 @@ network-monitor/
 │   └── [old start scripts]
 │
 ├── docs/                 # 📚 Documentation
+│   ├── INTELLIGENCE.md   # 🧠 how the new pipeline works
+│   ├── ASSESSMENT.md     # audit + remediation status
 │   ├── ROADMAP.md
 │   └── README_START.md
 │
