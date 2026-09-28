@@ -135,7 +135,9 @@ INTEL_ROUTES_AVAILABLE = False
 if INTEL_AVAILABLE:
     try:
         from src.routes.intel import intel_bp
+        from src.routes.intel_history import history_bp
         app.register_blueprint(intel_bp)
+        app.register_blueprint(history_bp)
         INTEL_ROUTES_AVAILABLE = True
         print("✅ Intelligence API loaded (/api/intel)")
     except Exception as e:
@@ -576,6 +578,9 @@ with app.app_context():
         created = intel_store.ensure_indexes()
         if created:
             print(f"✅ Added {len(created)} database indexes")
+        added_cols = intel_store.ensure_columns()
+        if added_cols:
+            print(f"✅ Added columns: {', '.join(added_cols)}")
     # Start the intelligence engine (evidence -> sessions -> behaviour -> VPN)
     if INTEL_AVAILABLE and INTEL_ROUTES_AVAILABLE and \
             os.getenv('NETSCANNER_INTEL', '1').lower() not in ('0', 'false', 'no'):

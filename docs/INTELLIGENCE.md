@@ -257,3 +257,67 @@ empty screens that say why.
   the tunnelled names are not recoverable.
 * **netstat/ss fallback** gives connections and PTR names, not URLs, and its
   bytes are zero because the OS table does not report them.
+
+## Parental / history surface (added in this round)
+
+Endpoints (all `GET` unless noted), served by `src/routes/intel_history.py`:
+
+| Endpoint | What it answers |
+|---|---|
+| `/api/intel/usage?range=day|week|month|6months|year|all&dimension=app|site|category|device|game|vpn&person=&mac=` | totals (`human`, `online_human`, sessions, bytes, active days) plus one row per app/site/category/device with a per-day map |
+| `/api/intel/calendar?dimension=&key=&range=&person=` | gap-filled day list for one app/site/category (a calendar heat map), totals (best day, average per active day) and the session drill-down (`human` = active time, `span_human` = first→last activity, `idle_human` = quiet time) |
+| `/api/intel/people/overview` | one row per person: today, week, online week, gaming time, top categories/apps, games, adult seconds, alert counts |
+| `/api/intel/people/<id>/summary?range=` | everything about one person: devices, categories/apps/sites/devices usage, games, alerts, searches |
+| `/api/intel/alerts?hours=&kind=&limit=` | alert rows + summary (per kind, per device, unseen, critical) + the active rules |
+| `/api/intel/alerts/rules` (GET/POST) | read/update the parental rules (persisted in settings as `alert_*`) |
+| `/api/intel/alerts/evaluate` (POST) | run every rule now over the last N hours |
+| `/api/intel/searches?hours=&term=&person=` | observed search terms, with the HTTPS caveat in the response |
+
+### Time maths: active vs span
+
+A site session records three numbers, and the UI shows all three:
+
+* `dwell_seconds` — union of active intervals (never double counts parallel sockets).
+* `span_seconds` — first evidence → last evidence (how long the session lasted).
+* `idle_seconds` — `span - dwell`: proven quiet time inside the session.
+
+A browser opens a fresh socket for nearly every request, so the interval marker is
+taken from the **site session** (and a per-device marker for the online dimension)
+rather than from the flow: otherwise a multi-connection visit would total zero.
+
+Connection-table capture (netstat) samples an established socket every N seconds.
+A gap between two samples of the *same* socket is real usage, so it is credited —
+but only up to `estimated_gap_seconds` (900 s) and only as estimated evidence.
+
+### Alerts
+
+`src/intel/alerts.py` evaluates the rules on a timer (`alerts_interval_seconds`,
+default 300 s) and on demand. Kinds: `adult_content`, `gambling`, `bypass`,
+`unknown_bypass`, `gaming_session`, `late_night`, `daily_limit`, `new_app`,
+`new_device`, `vpn_detected`. Every alert is an `intel_device_events` row, so it
+inherits severity, the ★ marker, the seen/unseen flag and retention. Alerts are
+deduped per (kind, device) — 24 h by default, tighter for bypass (12 h), gaming
+(6 h), bedtime (14 h) and limits (20 h) — so a five-minute sweep cannot spam.
+"First use of an app" is scoped **per device**, so each child's own first game is
+reported.
+
+### Search terms
+
+Search terms are recovered from the URL for ~30 engines
+(`src/intel/flow.py: SEARCH_ENGINES`, `search_term_from_url`). This only ever
+fires for plain HTTP: `https://www.google.com/search?q=…` is encrypted from the
+browser, and no local monitor can read it without a TLS-intercepting proxy. The
+dashboard states this next to the list instead of implying the data is complete.
+
+### Games
+
+`dimension=game` is the Gaming slice of the app dimension, resolved through the
+catalogue's app names (`catalog.apps_in_category`) because the rollups store app
+names (`Roblox`), not domains.
+
+### Schema updates
+
+New columns (`intel_site_sessions.span_seconds/idle_seconds`,
+`intel_flows.span_seconds`) and the `intel_searches` table are created by
+`ensure_columns()` / `create_all` at startup, so an existing database with months
+of history keeps working; no reset is needed.

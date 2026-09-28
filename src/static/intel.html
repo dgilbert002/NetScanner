@@ -115,6 +115,24 @@
   .scroll{max-height:560px;overflow:auto}
   .right{text-align:right}
   .center{text-align:center}
+  /* calendar heatmap */
+  .calgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(26px,1fr));gap:3px}
+  .calcell{aspect-ratio:1;border-radius:4px;background:#171d25;border:1px solid #222b35;
+           display:flex;align-items:center;justify-content:center;font-size:9.5px;color:#7d8b99;
+           cursor:pointer;position:relative}
+  .calcell:hover{border-color:var(--accent);color:var(--txt)}
+  .calcell.l1{background:#0d3a1d;color:#7ee787}
+  .calcell.l2{background:#1f6feb;color:#e6edf3}
+  .calcell.l3{background:#e3b341;color:#22262b}
+  .calcell.l4{background:#f85149;color:#fff}
+  .calcell.sel{outline:2px solid var(--accent);outline-offset:1px}
+  .calwrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+  .calmonth>div:first-child{font-size:11.5px;color:var(--dim);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
+  .pbar{height:6px;border-radius:4px;background:#222b35;overflow:hidden}
+  .pbar i{display:block;height:100%;background:linear-gradient(90deg,#1f6feb,#58a6ff)}
+  .sev-critical{color:#ff9d96}
+  .sev-warning{color:#e3b341}
+  .sev-info{color:#79c0ff}
 </style>
 </head>
 <body>
@@ -136,6 +154,10 @@
     <button data-tab="devices">Devices &amp; MACs</button>
     <button data-tab="identity">Identity</button>
     <button data-tab="bypass">VPN / bypass</button>
+    <button data-tab="people">People &amp; calendar</button>
+    <button data-tab="alerts">Alerts</button>
+    <button data-tab="searches">Searches</button>
+    <button data-tab="games">Games</button>
     <button data-tab="quality">Data quality</button>
     <button data-tab="events">Events</button>
   </nav>
@@ -262,6 +284,122 @@
       <div class="body flush scroll"><table id="vpnTable"></table></div></div>
     <div class="panel"><div class="head"><h2>Device risk ranking</h2></div>
       <div class="body flush"><table id="vpnDevices"></table></div></div>
+  </section>
+
+  <!-- ====================== PEOPLE & CALENDAR ====================== -->
+  <section id="tab-people">
+    <div class="row" style="margin-bottom:12px">
+      <label class="muted">Person</label>
+      <select id="personPick"></select>
+      <label class="muted">Range</label>
+      <select id="rangePick">
+        <option value="day">today</option>
+        <option value="yesterday">yesterday</option>
+        <option value="week" selected>last 7 days</option>
+        <option value="fortnight">14 days</option>
+        <option value="month">30 days</option>
+        <option value="quarter">90 days</option>
+        <option value="6months">6 months</option>
+        <option value="year">1 year</option>
+        <option value="all">everything</option>
+      </select>
+      <label class="muted">Show</label>
+      <select id="dimPick">
+        <option value="category" selected>categories</option>
+        <option value="app">apps</option>
+        <option value="site">sites / domains</option>
+        <option value="game">games only</option>
+        <option value="device">devices</option>
+      </select>
+      <span class="spacer"></span>
+      <input type="text" id="calKey" placeholder="app / domain (e.g. Roblox)" size="22">
+      <button class="btn primary" id="btnCalendar">Open calendar</button>
+    </div>
+    <div class="kpis" id="peopleKpis"></div>
+    <div class="grid2">
+      <div class="panel"><div class="head"><h2>Per person</h2>
+        <span class="sub">today · this week · gaming · alerts</span></div>
+        <div class="body flush"><table id="peopleTable"></table></div></div>
+      <div class="panel"><div class="head"><h2>Usage in range</h2>
+        <span class="sub" id="usageSub">select a person</span></div>
+        <div class="body flush scroll"><table id="usageTable"></table></div></div>
+    </div>
+    <div class="panel">
+      <div class="head"><h2 id="calTitle">Calendar</h2>
+        <span class="sub" id="calSub">pick an app, site or game and a range</span>
+        <span class="spacer"></span>
+        <span class="legend">
+          <span><i style="display:inline-block;width:10px;height:10px;background:#0d3a1d;border-radius:2px"></i> low</span>
+          <span><i style="display:inline-block;width:10px;height:10px;background:#1f6feb;border-radius:2px"></i> medium</span>
+          <span><i style="display:inline-block;width:10px;height:10px;background:#e3b341;border-radius:2px"></i> heavy</span>
+          <span><i style="display:inline-block;width:10px;height:10px;background:#f85149;border-radius:2px"></i> very heavy</span>
+        </span>
+      </div>
+      <div class="body">
+        <div id="calTotals" class="kv" style="margin-bottom:8px"></div>
+        <div id="calGrid" class="calgrid"></div>
+        <div id="calDetail" style="margin-top:12px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ ALERTS =========================== -->
+  <section id="tab-alerts">
+    <div class="row" style="margin-bottom:12px">
+      <span class="pill" id="alertPill">…</span>
+      <span class="spacer"></span>
+      <select id="alertHours"><option value="24">24 h</option><option value="72">3 days</option>
+        <option value="168" selected>7 days</option><option value="720">30 days</option></select>
+      <button class="btn" id="btnAlertScan">Re-check now</button>
+      <button class="btn" id="btnAlertRules">Rules…</button>
+    </div>
+    <div id="alertRulesPanel" class="panel" style="display:none">
+      <div class="head"><h2>Alert rules</h2><span class="sub">saved on the collector</span>
+        <span class="spacer"></span><button class="btn primary" id="btnSaveRules">Save</button></div>
+      <div class="body" id="alertRulesBody"></div>
+    </div>
+    <div class="panel"><div class="head"><h2>Alerts</h2>
+      <span class="sub">adult content, gamblng, VPN/proxy bypass, long gaming, bedtime, limits</span></div>
+      <div class="body flush scroll"><table id="alertTable"></table></div></div>
+  </section>
+
+  <!-- =========================== SEARCHES ========================== -->
+  <section id="tab-searches">
+    <div class="banner info"><span>&#128269;</span><div><b>What can and cannot be seen.</b>
+      Search terms are visible only when the request is unencrypted. Modern browsers send
+      <code>https://www.google.com/search?q=…</code> over TLS, so neither this tool nor any other local
+      monitor can read it without breaking encryption (a TLS-intercepting proxy — paid, and it breaks
+      certificate checks). Plain-HTTP searches, some in-app searches, and the search host itself are
+      recorded here. Everything else shows up as a normal site visit on the Calendar.</div></div>
+    <div class="row" style="margin-bottom:12px">
+      <span class="pill" id="searchPill">…</span>
+      <span class="spacer"></span>
+      <select id="searchHours"><option value="24">24 h</option><option value="168" selected>7 days</option>
+        <option value="720">30 days</option><option value="8760">1 year</option></select>
+      <input type="search" id="searchFilter" placeholder="filter terms…" size="20">
+    </div>
+    <div class="panel"><div class="head"><h2>Search terms observed</h2></div>
+      <div class="body flush scroll"><table id="searchTable"></table></div></div>
+    <div class="panel"><div class="head"><h2>Searches per engine</h2></div>
+      <div class="body flush"><table id="searchEngines"></table></div></div>
+  </section>
+
+  <!-- ============================ GAMES ============================ -->
+  <section id="tab-games">
+    <div class="row" style="margin-bottom:12px">
+      <label class="muted">Range</label>
+      <select id="gameRange">
+        <option value="day">today</option><option value="week" selected>last 7 days</option>
+        <option value="month">30 days</option><option value="6months">6 months</option>
+      </select>
+      <span class="spacer"></span>
+      <span class="pill" id="gamePill">…</span>
+    </div>
+    <div class="panel"><div class="head"><h2>Games &amp; gaming platforms</h2>
+      <span class="sub">every service the catalogue classifies as Gaming</span></div>
+      <div class="body flush scroll"><table id="gameTable"></table></div></div>
+    <div class="panel"><div class="head"><h2>Per person</h2></div>
+      <div class="body flush"><table id="gamePeople"></table></div></div>
   </section>
 
   <!-- =========================== QUALITY =========================== -->
@@ -852,8 +990,311 @@ async function loadHeader(){
   $('#countsChip') && ($('#countsChip').textContent = JSON.stringify(st.counts||{}));
 }
 
+
+/* ------------------------------------------------------------------ *
+ * PEOPLE / CALENDAR / ALERTS / SEARCHES / GAMES  (parental views)
+ * ------------------------------------------------------------------ */
+const ppl = { list: [], personId: '', range: 'week', dimension: 'category',
+              key: null, day: null, calendar: null };
+
+function qs(params){
+  const parts = [];
+  Object.keys(params).forEach(k => {
+    if (params[k] !== '' && params[k] !== null && params[k] !== undefined) {
+      parts.push(encodeURIComponent(k)+'='+encodeURIComponent(params[k]));
+    }
+  });
+  return parts.join('&');
+}
+function secsHuman(sec){ return hms(sec||0); }
+
+async function loadPeople(){
+  const [, overview, people] = await Promise.all([
+    api('/api/intel/quality').catch(()=>null),
+    api('/api/intel/people/overview').catch(()=>null),
+    api('/api/intel/people').catch(()=>null)
+  ]);
+  const list = (people && people.people) ? people.people : [];
+  ppl.list = list;
+  const peopleRows = (overview && overview.people) ? overview.people : [];
+  const pick = $('#personPick');
+  if (pick) {
+    const current = pick.value || ppl.personId;
+    pick.innerHTML = '<option value="">all people</option>' + list.map(p =>
+      '<option value="'+p.id+'">'+esc(p.display_name || p.name)+'</option>').join('');
+    pick.value = current;
+    ppl.personId = pick.value;
+  }
+  if (!ppl.personId) {
+    $('#peopleKpis').innerHTML = '<div class="kpi" style="grid-column:1/-1"><div class="k">No people yet</div>'
+      + '<div class="muted" style="margin-top:4px">Add family members on the <b>Identity</b> tab, then confirm '
+      + 'which device belongs to whom. Until a device is identified, usage is still recorded per device — '
+      + 'it just cannot be attributed to a name.</div></div>';
+  } else {
+    const me = peopleRows.find(p => String(p.person_id) === String(ppl.personId));
+    $('#peopleKpis').innerHTML = me ? [
+      ['Today', me.today_human], ['This week', me.week_human],
+      ['Online this week', me.online_week_human], ['Gaming', me.gaming_human],
+      ['Devices', me.device_count], ['Alerts', me.alerts + (me.critical_alerts ? ' ('+me.critical_alerts+' critical)' : '')]
+    ].map(([k,v]) => '<div class="kpi"><div class="v">'+esc(v)+'</div><div class="k">'+esc(k)+'</div></div>').join('')
+      : '';
+  }
+
+  $('#peopleTable').innerHTML = peopleRows.length
+    ? '<thead><tr><th>Person</th><th class="right">Today</th><th class="right">Week</th>'
+      + '<th class="right">Online week</th><th class="right">Gaming</th><th>Top apps</th><th class="right">Alerts</th></tr></thead><tbody>'
+      + peopleRows.map(p => '<tr><td>' + esc(p.name)
+          + (p.is_child ? ' <span class="chip">child</span>' : '')
+          + '<div class="muted" style="font-size:11px">' + (p.devices||[]).map(d=>esc(d.name||d.mac)).join(', ') + '</div></td>'
+          + '<td class="right">'+esc(p.today_human)+'</td><td class="right">'+esc(p.week_human)+'</td>'
+          + '<td class="right">'+esc(p.online_week_human)+'</td><td class="right">'+esc(p.gaming_human)+'</td>'
+          + '<td>'+(p.top_apps||[]).slice(0,4).map(a=>esc(a.key)+' <span class="muted">'+esc(a.human)+'</span>').join('<br>')+'</td>'
+          + '<td class="right">'+(p.critical_alerts?'<span class="sev-critical">'+p.critical_alerts+' critical</span><br>':'')
+          + esc(p.alerts)+'</td></tr>').join('') + '</tbody>'
+    : emptyRow(7, 'No people yet', 'Add people on the Identity tab and confirm their devices.');
+
+  await loadUsage();
+  if (ppl.key) await openCalendar(ppl.key);
+}
+
+async function loadUsage(){
+  const params = qs({range: ppl.range, dimension: ppl.dimension, person: ppl.personId});
+  const data = await api('/api/intel/usage?' + params).catch(()=>null);
+  if (!data) { setApiError('Usage range unavailable.'); return; }
+  const t = data.totals;
+  $('#usageSub').textContent = (data.person ? data.person.name : 'all people') + ' · '
+    + data.start + ' → ' + data.end;
+  $('#peopleKpis').innerHTML += '';
+  const dimLabel = {category:'category', app:'app', site:'site', game:'game', device:'device'}[data.dimension] || data.dimension;
+  $('#usageTable').innerHTML = data.items.length
+    ? '<thead><tr><th>'+esc(dimLabel)+'</th><th style="width:22%">Share</th><th class="right">Time</th>'
+      + '<th class="right">Days</th><th class="right">Avg/day</th><th class="right">Sessions</th></tr></thead><tbody>'
+      + data.items.map(i => '<tr><td><div>'+esc(i.name||i.key)+'</div>'
+          + (i.category?'<span class="chip">'+esc(i.category)+'</span> ':'')
+          + '<div class="muted mono" style="font-size:11px">'+esc(i.key)+'</div></td>'
+          + '<td>'+bar(t.seconds? i.seconds/t.seconds : 0)+'</td>'
+          + '<td class="right">'+esc(i.human)+'</td>'
+          + '<td class="right">'+i.active_days+'/'+esc(t.active_days||0)+'</td>'
+          + '<td class="right">'+esc(secsHuman(i.avg_per_active_day))+'</td>'
+          + '<td class="right">'+esc(i.sessions)+'</td></tr>').join('')
+      + '<tr><td><b>Total</b></td><td></td><td class="right"><b>'+esc(t.human)+'</b></td>'
+      + '<td class="right" colspan="3">online '+esc(t.online_human)+' · '+esc(t.distinct_keys)+' items</td></tr>'
+      + '</tbody>'
+    : emptyRow(6, 'Nothing recorded in this range',
+        'Pick a person and a wider range, or check that capture is running (Data quality).');
+}
+
+function heatClass(seconds, max){
+  if (!seconds) return '';
+  const r = seconds / (max || 1);
+  if (r > 0.75) return 'l4';
+  if (r > 0.4) return 'l3';
+  if (r > 0.12) return 'l2';
+  return 'l1';
+}
+
+async function openCalendar(key){
+  const explicit = $('#calKey') ? $('#calKey').value.trim() : '';
+  ppl.key = key || explicit;
+  if (!ppl.key) { setApiError('Type an app or domain name to open its calendar.'); return; }
+  const params = qs({dimension: ppl.dimension === 'game' ? 'app' : ppl.dimension,
+                     key: ppl.key, range: ppl.range, person: ppl.personId});
+  const data = await api('/api/intel/calendar?' + params).catch(()=>null);
+  if (!data) { setApiError('Calendar unavailable.'); return; }
+  ppl.calendar = data;
+  $('#calTitle').textContent = (data.name || ppl.key) + (data.category ? ' · ' + data.category : '')
+    + (data.person ? ' · ' + data.person.name : '');
+  $('#calSub').textContent = data.start + ' → ' + data.end + ' · ' + data.totals.active_days + ' active day(s)';
+  const max = Math.max(1, ...data.days.map(d => d.seconds));
+  $('#calTotals').innerHTML = [
+    ['Total', data.totals.human], ['Active days', data.totals.active_days],
+    ['Avg / active day', secsHuman(data.totals.avg_per_active_day)],
+    ['Sessions', data.totals.sessions], ['Heaviest day', data.totals.best_day || '—']
+  ].map(([k,v]) => '<span><b>'+esc(k)+':</b> '+esc(v)+'</span>').join('');
+
+  // month grids
+  const months = {};
+  data.days.forEach(d => {
+    const month = d.day.slice(0, 7);
+    (months[month] = months[month] || []).push(d);
+  });
+  $('#calGrid').innerHTML = '<div class="calwrap">' + Object.keys(months).sort().map(month => {
+    const days = months[month];
+    const first = new Date(month + '-01T00:00:00');
+    const pad = (first.getDay() + 6) % 7;      // Monday-first
+    const cells = [];
+    for (let i = 0; i < pad; i++) cells.push('<div></div>');
+    days.forEach(d => {
+      const dayNum = parseInt(d.day.slice(8, 10), 10);
+      const cls = heatClass(d.seconds, max);
+      cells.push('<div class="calcell '+cls+(ppl.day===d.day?' sel':'')+'" data-day="'+d.day+'"'
+        + ' title="'+d.day+': '+esc(d.human)+' · '+d.sessions+' session(s)">'+dayNum+'</div>');
+    });
+    return '<div class="calmonth"><div>'+month+'</div><div class="calgrid" style="grid-template-columns:repeat(7,1fr)">'
+      + cells.join('') + '</div></div>';
+  }).join('') + '</div>';
+
+  renderCalendarDetail();
+}
+
+function renderCalendarDetail(){
+  const data = ppl.calendar;
+  if (!data) return;
+  const day = ppl.day;
+  let sessions = data.sessions || [];
+  if (day) sessions = sessions.filter(s => s.day === day);
+  const row = data.days.find(d => d.day === day);
+  $('#calDetail').innerHTML = (day ? '<div class="kv" style="margin-bottom:6px"><b>'+esc(day)+'</b>'
+      + '<span>'+(row ? esc(row.human) : '0s')+' · '+(row ? row.sessions : 0)+' session(s)</span></div>' : '')
+    + (sessions.length
+      ? '<div class="scroll" style="max-height:300px"><table><thead><tr><th>Day</th><th>Started</th><th class="right">Active</th>'
+        + '<th class="right">Session span</th><th>Device</th><th>Person</th><th>App</th><th>URL</th></tr></thead><tbody>'
+        + sessions.slice(0, 300).map(s => '<tr><td>'+esc(s.day||'')+'</td>'
+            + '<td>'+esc(clock(s.first_seen))+'</td>'
+            + '<td class="right">'+esc(s.human)+'</td>'
+            + '<td class="right" title="first to last activity, including quiet gaps">'+esc(s.span_human||'—')
+            + (s.idle_seconds ? ' <span class="muted">(idle '+esc(s.idle_human)+')</span>' : '')+'</td>'
+            + '<td>'+esc(s.device_mac||'')+'</td>'
+            + '<td>'+(s.person?esc(s.person):'<span class="muted">unknown</span>')+'</td>'
+            + '<td>'+esc(s.app||'')+'</td>'
+            + '<td class="mono" style="font-size:11px">'+esc(s.url||'')+'</td></tr>').join('')
+        + '</tbody></table></div>'
+      : '<div class="empty">'+(day ? 'No sessions for that day.' : 'Click a day in the calendar to list its sessions.')+'</div>');
+}
+
+/* ------------------------------- alerts ------------------------------ */
+const ALERT_FIELDS = [
+  ['alerts_enabled', 'Alerting enabled', 'bool'],
+  ['adult_alert', 'Alert on adult content', 'bool'],
+  ['gambling_alert', 'Alert on gambling sites', 'bool'],
+  ['bypass_alert', 'Alert on VPN / proxy bypass', 'bool'],
+  ['bypass_score_threshold', 'Bypass alert at score ≥', 'int'],
+  ['gaming_alert', 'Alert on long gaming sessions', 'bool'],
+  ['gaming_minutes', 'Gaming session limit (minutes)', 'int'],
+  ['late_night_alert', 'Alert on bedtime activity', 'bool'],
+  ['bedtime_start', 'Bedtime starts', 'text'],
+  ['bedtime_end', 'Bedtime ends', 'text'],
+  ['late_night_minutes', 'Bedtime tolerance (minutes)', 'int'],
+  ['daily_limit_alert', 'Alert on daily category limits', 'bool'],
+  ['daily_limit_hours', 'Daily limit (hours)', 'int'],
+  ['new_app_alert', 'Alert on first use of an app', 'bool'],
+  ['new_device_alert', 'Alert on a new device', 'bool']
+];
+
+async function loadAlerts(){
+  const hours = $('#alertHours').value;
+  const data = await api('/api/intel/alerts?hours=' + hours).catch(()=>null);
+  if (!data) { setApiError('Alert feed unavailable.'); return; }
+  const s = data.summary || {};
+  $('#alertPill').textContent = (s.total||0) + ' alert(s) · ' + (s.unseen||0) + ' unseen · '
+    + (s.critical||0) + ' critical';
+  const rows = data.alerts || [];
+  $('#alertTable').innerHTML = rows.length
+    ? '<thead><tr><th>When</th><th>Severity</th><th>Alert</th><th>Device</th><th>Person</th><th>Detail</th></tr></thead><tbody>'
+      + rows.map(a => '<tr><td>'+dateShort(a.event_at)+'</td>'
+          + '<td class="sev-'+esc(a.severity||'info')+'">'+esc(a.severity||'')+'</td>'
+          + '<td>'+esc(a.title)+'<div class="muted" style="font-size:11px">'+esc(a.kind)+'</div></td>'
+          + '<td>'+esc(a.device||a.device_mac||'')+'</td>'
+          + '<td>'+(a.person?esc(a.person):'<span class="muted">unknown</span>')
+          + (a.certain?' <span class="chip">confirmed</span>':'')+'</td>'
+          + '<td class="muted" style="font-size:11px">'+esc(JSON.stringify(a.detail||{}).slice(0,150))+'</td></tr>').join('')
+      + '</tbody>'
+    : emptyRow(6, 'No alerts in this window',
+        'Rules are evaluated every few minutes; press “Re-check now” to run them immediately.');
+}
+
+async function showAlertRules(){
+  const panel = $('#alertRulesPanel');
+  const rules = await api('/api/intel/alerts/rules').catch(()=>null);
+  if (!rules) return;
+  panel.style.display = 'block';
+  $('#alertRulesBody').innerHTML = '<div class="grid2">' + ALERT_FIELDS.map(([key, label, kind]) => {
+    const value = rules[key];
+    if (kind === 'bool') {
+      return '<label class="kv" style="align-items:center"><input type="checkbox" data-rule="'+key+'"'
+        + (value ? ' checked' : '') + '> <span>'+esc(label)+'</span></label>';
+    }
+    return '<label class="kv" style="align-items:center"><span style="min-width:200px">'+esc(label)+'</span>'
+      + '<input type="'+(kind==='int'?'number':'text')+'" data-rule="'+key+'" value="'+esc(value)+'" size="8"></label>';
+  }).join('') + '</div>';
+}
+
+async function saveAlertRules(){
+  const patch = {};
+  $$('[data-rule]').forEach(el => {
+    const key = el.dataset.rule;
+    patch[key] = el.type === 'checkbox' ? el.checked : el.value;
+  });
+  try {
+    await api('/api/intel/alerts/rules', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(patch)});
+    $('#alertRulesPanel').style.display = 'none';
+    loadAlerts();
+  } catch(e){ setApiError('Could not save rules: ' + e.message); }
+}
+
+/* ------------------------------ searches ----------------------------- */
+async function loadSearches(){
+  const hours = $('#searchHours').value;
+  const data = await api('/api/intel/searches?hours=' + hours).catch(()=>null);
+  if (!data) { setApiError('Search feed unavailable.'); return; }
+  const filter = ($('#searchFilter').value || '').toLowerCase().trim();
+  let rows = data.searches || [];
+  if (filter) rows = rows.filter(r => (r.term||'').toLowerCase().includes(filter));
+  $('#searchPill').textContent = rows.length + ' term(s) observed in this window';
+  $('#searchTable').innerHTML = rows.length
+    ? '<thead><tr><th>When</th><th>Search term</th><th>Engine</th><th>Device</th><th>Person</th></tr></thead><tbody>'
+      + rows.map(r => '<tr><td>'+dateShort(r.seen_at)+'</td>'
+          + '<td><b>'+esc(r.term)+'</b><div class="mono muted" style="font-size:11px">'+esc(r.url||'')+'</div></td>'
+          + '<td>'+esc(r.engine||'')+'</td>'
+          + '<td>'+esc(r.device||r.device_mac||'')+'</td>'
+          + '<td>'+(r.person?esc(r.person):'<span class="muted">unknown</span>')+'</td></tr>').join('')
+      + '</tbody>'
+    : emptyRow(5, 'No search terms captured',
+        'Modern searches are encrypted end-to-end from the browser, so their terms are not readable here. '
+        + 'Plain-HTTP searches and in-app search URLs are.');
+  $('#searchEngines').innerHTML = Object.keys(data.engines||{}).length
+    ? '<thead><tr><th>Engine</th><th class="right">Terms</th></tr></thead><tbody>'
+      + Object.entries(data.engines).map(([k,v]) => '<tr><td>'+esc(k)+'</td><td class="right">'+esc(v)+'</td></tr>').join('')
+      + '</tbody>'
+    : emptyRow(2, 'Nothing yet', '');
+}
+
+/* ------------------------------- games ------------------------------- */
+async function loadGames(){
+  const range = $('#gameRange').value;
+  const data = await api('/api/intel/usage?' + qs({range, dimension:'game'})).catch(()=>null);
+  const overview = await api('/api/intel/people/overview').catch(()=>null);
+  if (!data) { setApiError('Games view unavailable.'); return; }
+  $('#gamePill').textContent = data.totals.human + ' across ' + data.totals.distinct_keys + ' game service(s)';
+  $('#gameTable').innerHTML = data.items.length
+    ? '<thead><tr><th>Game / platform</th><th style="width:24%">Share</th><th class="right">Time</th>'
+      + '<th class="right">Days</th><th>Devices</th></tr></thead><tbody>'
+      + data.items.map(i => '<tr><td><div>'+esc(i.name||i.key)+'</div>'
+          + '<div class="mono muted" style="font-size:11px">'+esc(i.key)+'</div></td>'
+          + '<td>'+bar(i.seconds/(data.totals.seconds||1))+'</td>'
+          + '<td class="right">'+esc(i.human)+'</td>'
+          + '<td class="right">'+i.active_days+'</td>'
+          + '<td>'+(i.devices||[]).map(d => esc(d.person ? d.person+' · '+d.device : d.device)).join('<br>')+'</td>'
+          + '</tr>').join('') + '</tbody>'
+    : emptyRow(5, 'No gaming traffic in this range',
+        'Gaming is recognised from the built-in catalogue (Steam, Roblox, Fortnite, PlayStation, Xbox, …). '
+        + 'A game the catalogue does not know still shows up on the Calendar as an unknown domain.');
+  const people = (overview && overview.people) ? overview.people : [];
+  $('#gamePeople').innerHTML = people.length
+    ? '<thead><tr><th>Person</th><th style="width:30%">Gaming share of week</th><th class="right">Gaming</th>'
+      + '<th class="right">Total week</th><th class="right">Alerts</th></tr></thead><tbody>'
+      + people.map(p => '<tr><td>'+esc(p.name)+'</td>'
+          + '<td>'+bar(p.week_seconds ? p.gaming_seconds/p.week_seconds : 0)+'</td>'
+          + '<td class="right">'+esc(p.gaming_human)+'</td>'
+          + '<td class="right">'+esc(p.week_human)+'</td>'
+          + '<td class="right">'+esc(p.alerts)+'</td></tr>').join('') + '</tbody>'
+    : emptyRow(5, 'No people yet', 'Add people on the Identity tab to attribute gaming time.');
+}
+
 const LOADERS = {now:loadNow, today:loadToday, urls:loadUrls, devices:loadDevices,
-  identity:loadIdentity, bypass:loadBypass, quality:loadQuality, events:loadEvents};
+  identity:loadIdentity, bypass:loadBypass, people:loadPeople, alerts:loadAlerts,
+  searches:loadSearches, games:loadGames, quality:loadQuality, events:loadEvents};
 function showTab(name){
   state.tab = name;
   $$('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab===name));
@@ -927,6 +1368,32 @@ document.addEventListener('click', async ev => {
   }catch(e){ $('#maintOut').textContent = 'failed: '+e.message; }
   m.disabled = false;
 });
+$('#personPick').onchange = () => { ppl.personId = $('#personPick').value; ppl.day = null; loadPeople(); };
+$('#rangePick').onchange = () => { ppl.range = $('#rangePick').value; ppl.day = null; loadPeople(); };
+$('#dimPick').onchange = () => { ppl.dimension = $('#dimPick').value; loadUsage(); };
+$('#btnCalendar').onclick = () => { ppl.day = null; openCalendar(); };
+$('#calKey').onkeydown = e => { if (e.key === 'Enter') { ppl.day = null; openCalendar(); } };
+document.addEventListener('click', ev => {
+  const cell = ev.target.closest('.calcell');
+  if (cell) {
+    ppl.day = cell.dataset.day;
+    $$('.calcell').forEach(c => c.classList.remove('sel'));
+    cell.classList.add('sel');
+    renderCalendarDetail();
+  }
+});
+$('#alertHours').onchange = () => loadAlerts();
+$('#searchHours').onchange = () => loadSearches();
+$('#searchFilter').oninput = () => loadSearches();
+$('#gameRange').onchange = () => loadGames();
+$('#btnAlertScan').onclick = async (e) => {
+  e.target.disabled = true; e.target.textContent = 'Checking…';
+  try { await api('/api/intel/alerts/evaluate', {method:'POST'}); } catch(err){ setApiError(err.message); }
+  e.target.disabled = false; e.target.textContent = 'Re-check now';
+  loadAlerts();
+};
+$('#btnAlertRules').onclick = () => showAlertRules();
+$('#btnSaveRules').onclick = () => saveAlertRules();
 $('#btnEvSeen').onclick = async () => {
   try{ await api('/api/intel/events/seen', {method:'POST'}); loadEvents(); }
   catch(e){ setApiError('Mark-seen failed: '+e.message); }

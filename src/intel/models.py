@@ -154,6 +154,7 @@ class IntelFlow(db.Model):
     close_reason = db.Column(db.String(24))      # idle_timeout | fin | shutdown | superseded
     state = db.Column(db.String(10), default='live', index=True)
     duration_seconds = db.Column(db.Integer, default=0)
+    span_seconds = db.Column(db.Integer, default=0)
 
     bytes_up = db.Column(db.BigInteger, default=0)
     bytes_down = db.Column(db.BigInteger, default=0)
@@ -230,7 +231,9 @@ class IntelSiteSession(db.Model):
     last_seen = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     closed_at = db.Column(db.DateTime)
     state = db.Column(db.String(10), default='live', index=True)
-    dwell_seconds = db.Column(db.Integer, default=0)
+    dwell_seconds = db.Column(db.Integer, default=0)      # union of active intervals
+    span_seconds = db.Column(db.Integer, default=0)       # first -> last, incl. quiet gaps
+    idle_seconds = db.Column(db.Integer, default=0)       # span - dwell (proven idle)
     active_seconds = db.Column(db.Integer, default=0)     # within the idle window of last_seen
     pageviews = db.Column(db.Integer, default=0)
     bytes_total = db.Column(db.BigInteger, default=0)
@@ -585,6 +588,49 @@ class IntelIdentityScore(db.Model):
             'updated_at': _iso(self.updated_at),
             'is_estimated': bool(self.is_estimated),
             'locked': bool(self.locked),
+        }
+
+
+class IntelSearch(db.Model):
+    """A search query seen in clear text (plain HTTP search pages / redirects).
+
+    HTTPS search is invisible by design - no amount of local analysis can read
+    ``https://www.google.com/search?q=...`` without breaking TLS - so this table
+    only ever holds queries that were genuinely observable, and each row says
+    where it came from.
+    """
+
+    __tablename__ = 'intel_searches'
+
+    id = db.Column(db.Integer, primary_key=True)
+    seen_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    device_mac = db.Column(db.String(32), index=True)
+    person_id = db.Column(db.Integer, index=True)
+    person_name = db.Column(db.String(120))
+    engine = db.Column(db.String(120), index=True)
+    term = db.Column(db.String(300))
+    url = db.Column(db.String(1000))
+    category = db.Column(db.String(60))
+    source = db.Column(db.String(24), default='live')
+    collector = db.Column(db.String(24))
+    confidence = db.Column(db.Float, default=0.9)
+    is_estimated = db.Column(db.Boolean, default=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'seen_at': _iso(self.seen_at),
+            'device_mac': self.device_mac,
+            'person_id': self.person_id,
+            'person_name': self.person_name,
+            'engine': self.engine,
+            'term': self.term,
+            'url': self.url,
+            'category': self.category,
+            'source': self.source,
+            'collector': self.collector,
+            'confidence': self.confidence,
+            'is_estimated': bool(self.is_estimated),
         }
 
 

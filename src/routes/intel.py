@@ -977,7 +977,11 @@ def observe():
                 is_estimated=bool(record.get('is_estimated', False)),
                 confidence=float(record.get('confidence') or 0.6),
                 process_name=record.get('process_name'),
+                detail=dict(record.get('detail') or {}),
             )
+            if record.get('search_term'):
+                ev.detail['search_term'] = str(record['search_term'])[:300]
+                ev.detail.setdefault('search_engine', record.get('search_engine') or 'supplied')
             if record.get('observed_at'):
                 try:
                     ev.observed_at = datetime.fromisoformat(str(record['observed_at']).replace('Z', ''))

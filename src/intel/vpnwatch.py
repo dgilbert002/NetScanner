@@ -92,7 +92,7 @@ class _Ip2Asn:
         if not info:
             try:
                 from src.models.network import EnrichedData
-                row = EnrichedData.query.filter_by(ip_address=ip).first()
+                row = intel_store.equery(EnrichedData).filter_by(ip_address=ip).first()
                 if row:
                     info = {'asn': row.asn, 'organization': row.organization,
                             'country': row.country_code}

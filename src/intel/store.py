@@ -202,6 +202,9 @@ def configure_sqlite(app):
 
 
 INDEX_SQL = [
+    'CREATE INDEX IF NOT EXISTS ix_intel_search_time ON intel_searches(seen_at)',
+    'CREATE INDEX IF NOT EXISTS ix_intel_search_person ON intel_searches(person_id, seen_at)',
+    'CREATE INDEX IF NOT EXISTS ix_intel_search_device ON intel_searches(device_mac, seen_at)',
     'CREATE INDEX IF NOT EXISTS ix_ts_start ON traffic_sessions(start_time)',
     'CREATE INDEX IF NOT EXISTS ix_ts_mac ON traffic_sessions(src_mac)',
     'CREATE INDEX IF NOT EXISTS ix_ts_dst ON traffic_sessions(dst_ip, dst_port)',
@@ -221,6 +224,42 @@ INDEX_SQL = [
     'CREATE INDEX IF NOT EXISTS ix_intel_vpn_time ON intel_vpn_findings(last_seen)',
     'CREATE INDEX IF NOT EXISTS ix_intel_id_updated ON intel_identity_scores(updated_at)',
 ]
+
+
+NEW_COLUMNS = (
+    ('intel_site_sessions', 'span_seconds', 'INTEGER DEFAULT 0'),
+    ('intel_site_sessions', 'idle_seconds', 'INTEGER DEFAULT 0'),
+    ('intel_flows', 'span_seconds', 'INTEGER DEFAULT 0'),
+)
+
+
+def ensure_columns():
+    """Add columns introduced after a database was created (SQLite ADD COLUMN).
+
+    Keeps an existing install - with months of history in it - usable after an
+    upgrade instead of forcing a rebuild.
+    """
+    added = []
+    try:
+        from sqlalchemy import inspect
+        engine = engine_engine()
+        inspector = inspect(engine)
+        with engine.begin() as conn:
+            for table, column, ddl in NEW_COLUMNS:
+                try:
+                    existing = {c['name'] for c in inspector.get_columns(table)}
+                except Exception:
+                    continue
+                if column in existing:
+                    continue
+                try:
+                    conn.exec_driver_sql(f'ALTER TABLE {table} ADD COLUMN {column} {ddl}')
+                    added.append(f'{table}.{column}')
+                except Exception:
+                    continue
+    except Exception:
+        return added
+    return added
 
 
 def ensure_indexes():
@@ -497,6 +536,7 @@ RETENTION_TABLES = (
     ('intel_vpn_findings', 'last_seen'),
     ('intel_device_events', 'event_at'),
     ('intel_revisions', 'created_at'),
+    ('intel_searches', 'seen_at'),
     ('traffic_sessions', 'start_time'),
     ('website_visits', 'timestamp'),
 )

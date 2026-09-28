@@ -33,6 +33,7 @@ from src.intel.catalog import DEFAULT_CATALOG, root_domain
 from src.intel.maclab import MacRegistry, is_valid_mac, normalize_mac
 from src.intel.models import (
     IntelBehaviorProfile,
+    IntelSearch,
     IntelDeviceEvent,
     IntelFlow,
     IntelIdentityScore,
@@ -43,6 +44,7 @@ from src.intel.models import (
     IntelVpnFinding,
 )
 from src.intel.sessionizer import Sessionizer
+from src.intel import alerts as intel_alerts
 from src.intel.vpnwatch import VpnWatch
 
 SETTINGS_KEY = 'settings'
@@ -60,6 +62,23 @@ DEFAULT_SETTINGS = {
     'feeds_enabled': False,
     'track_private_macs': True,
     'sessionizer_flush_seconds': 10,
+    # parental alerting (see src/intel/alerts.py for the rule semantics)
+    'alert_alerts_enabled': True,
+    'alert_adult_alert': True,
+    'alert_gambling_alert': True,
+    'alert_bypass_alert': True,
+    'alert_bypass_score_threshold': 40,
+    'alert_gaming_alert': True,
+    'alert_gaming_minutes': 120,
+    'alert_late_night_alert': True,
+    'alert_bedtime_start': '22:30',
+    'alert_bedtime_end': '06:30',
+    'alert_late_night_minutes': 20,
+    'alert_daily_limit_alert': False,
+    'alert_daily_limit_hours': 4,
+    'alert_new_app_alert': True,
+    'alert_new_device_alert': True,
+    'alerts_interval_seconds': 300,
 }
 
 
@@ -108,6 +127,7 @@ class IntelEngine:
         self.behavior = BehaviorEngine(idle_seconds=int(self.settings.get('idle_seconds', 90)),
                                        days=int(self.settings.get('behavior_days', 30)))
         self.vpn = VpnWatch(health=self.health)
+        self.alerts = intel_alerts.AlertEngine(settings=self.settings, health=self.health, engine=self)
         self.capture = None
 
         self.local_networks = intel_capture.local_ipv4_networks()
@@ -115,6 +135,8 @@ class IntelEngine:
         self.ip_to_mac = {}
         self.mac_to_host = {}
         self.dhcp_fingerprints = {}
+        self._seen_search = {}
+        self._identity_cache = {}
 
         self.running = False
         self._thread = None
@@ -131,7 +153,8 @@ class IntelEngine:
         self._last_jobs = {}
         self.started_at = None
         self.errors = []
-        self.counters = {'evidence': 0, 'dropped': 0, 'events': 0, 'vpn_findings': 0}
+        self.counters = {'evidence': 0, 'dropped': 0, 'events': 0, 'vpn_findings': 0,
+                         'searches': 0}
 
     # ------------------------------------------------------------------
     # session plumbing
@@ -341,6 +364,9 @@ class IntelEngine:
                         DEFAULT_CATALOG.lookup_host(host)
                     except Exception:
                         pass
+
+                # observable search queries (plain HTTP only) into their own table
+                self._record_search(ev, result)
         except Exception as exc:
             self.counters['dropped'] += 1
             self.health.note('engine', error=exc, dropped=1)
@@ -348,6 +374,81 @@ class IntelEngine:
                 intel_store.engine_session().rollback()
             except Exception:
                 pass
+
+    # ------------------------------------------------------------------
+    # search capture
+    # ------------------------------------------------------------------
+    def _record_search(self, ev, result):
+        """Store a search term that arrived in clear text.
+
+        HTTPS hides the query string, so this only ever fires for plain HTTP
+        (or an unencrypted redirect/prefetch).  The person is attached from the
+        current best identity so the alert and history views can group by child.
+        """
+        detail = ev.detail or {}
+        term = detail.get('search_term')
+        if not term and ev.http_host and ev.http_path:
+            # derive it here as well, so evidence arriving through the API or a
+            # pcap replay gets the same treatment as live packets
+            try:
+                from src.intel.flow import search_term_from_url
+                engine_name, derived = search_term_from_url(ev.http_host, ev.http_path)
+                if derived:
+                    term = derived
+                    detail = dict(detail)
+                    detail['search_engine'] = engine_name
+                    detail['search_term'] = derived
+            except Exception:
+                term = None
+        if not term:
+            return None
+        if self._seen_search.get(term.lower()) == (ev.device_mac, ev.observed_at.date()):
+            return None
+        self._seen_search[term.lower()] = (ev.device_mac, ev.observed_at.date())
+        if len(self._seen_search) > 5000:
+            self._seen_search.clear()
+        try:
+            person_id, person_name = self.identity_for_mac(ev.device_mac)
+            row = IntelSearch(
+                seen_at=ev.observed_at, device_mac=ev.device_mac,
+                person_id=person_id, person_name=person_name,
+                engine=detail.get('search_engine'),
+                term=term[:300],
+                url=f"http://{ev.http_host or ''}{ev.http_path or ''}"[:1000],
+                category=(result or {}).get('category'),
+                source=ev.source or 'live', collector=ev.collector,
+                confidence=float(ev.confidence or 0.8),
+                is_estimated=bool(ev.is_estimated))
+            intel_store.engine_session().add(row)
+            self.counters['searches'] = self.counters.get('searches', 0) + 1
+            return row
+        except Exception as exc:
+            self.health.note('searches', error=exc)
+            return None
+
+    def identity_for_mac(self, mac):
+        """Best (person_id, person_name) for a MAC; locked bindings win."""
+        mac = (mac or '').lower()
+        if not mac:
+            return None, None
+        cached = self._identity_cache.get(mac)
+        if cached and (time.time() - cached[0]) < 60:
+            return cached[1], cached[2]
+        person_id = person_name = None
+        try:
+            rows = intel_store.equery(IntelIdentityScore).filter_by(device_mac=mac).all()
+            rows.sort(key=lambda r: (bool(r.locked or r.is_binding), r.probability or 0), reverse=True)
+            for row in rows:
+                if row.locked or row.is_binding or (row.probability or 0) >= 0.5:
+                    person_id, person_name = row.person_id, row.person_name
+                    break
+        except Exception:
+            pass
+        self._identity_cache[mac] = (time.time(), person_id, person_name)
+        if len(self._identity_cache) > 2000:
+            self._identity_cache.clear()
+        return person_id, person_name
+
 
     def _evaluate_vpn(self, ev, session_result):
         try:
@@ -438,6 +539,15 @@ class IntelEngine:
                                      detail={'days': days, 'deleted': counts})
             except Exception as exc:
                 self._record_error(f'retention job: {exc}')
+
+        if self._due('alerts', int(self.settings.get('alerts_interval_seconds', 300) or 300)):
+            try:
+                summary = self.alerts.evaluate(hours=26)
+                self.health.note('alerts', status='healthy', events=summary.get('raised', 0),
+                                 detail={k: v for k, v in summary.items() if isinstance(v, int)})
+            except Exception as exc:
+                self._record_error(f'alert job: {exc}')
+                self.health.note('alerts', error=exc)
 
         if self._due('discovery', 300):
             self._refresh_presence()

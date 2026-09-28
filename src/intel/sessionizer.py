@@ -137,9 +137,13 @@ class Sessionizer:
     """Builds flows, site visits and usage buckets from evidence rows."""
 
     def __init__(self, app=None, idle_seconds=90, health=None, mirror_legacy=True,
-                 max_intervals=4000):
+                 max_intervals=4000, estimated_gap_seconds=900):
         self.app = app
         self.idle_seconds = int(idle_seconds or 90)
+        # A connection-table sample every N seconds proves the socket existed in
+        # between.  Cap how far that logic may stretch so a stale ESTABLISHED row
+        # cannot invent hours of usage.
+        self.estimated_gap_seconds = int(estimated_gap_seconds or 900)
         self.health = health
         self.mirror_legacy = mirror_legacy
         self.max_intervals = max_intervals
@@ -151,6 +155,9 @@ class Sessionizer:
         # merged activity intervals, keyed by (dimension, device, key)
         self.intervals = {}
         self.device_presence = {}
+        # A connection-table sample every N seconds proves the socket existed in
+        # between.  Cap how far that logic may stretch (15 min) so a stale
+        # ESTABLISHED row cannot invent hours.
 
         self._bucket_pending = {}
         self._daily_pending = {}
@@ -162,7 +169,7 @@ class Sessionizer:
 
         self.counters = {'flows_created': 0, 'flows_extended': 0, 'flows_closed': 0,
                          'sites_created': 0, 'sites_extended': 0, 'sites_closed': 0,
-                         'evidence': 0, 'skipped_late': 0}
+                         'evidence': 0, 'skipped_late': 0, 'estimated_gaps': 0}
 
     # ------------------------------------------------------------------
     # lifecycle
@@ -244,7 +251,9 @@ class Sessionizer:
         key = self._flow_key(ev)
         flow = self.flows.get(key)
         ts = ev.observed_at
-        if flow is not None and (ts - (flow.last_seen or ts)).total_seconds() > self.idle_seconds:
+        idle_window = self.estimated_gap_seconds if (flow is not None and flow.is_estimated
+                                                     and ev.is_estimated) else self.idle_seconds
+        if flow is not None and (ts - (flow.last_seen or ts)).total_seconds() > idle_window:
             self._close_flow(flow, 'idle_timeout', flow.last_seen)
             result['closed'].append({'kind': 'flow', 'id': flow.id, 'mac': flow.device_mac})
             self.flows.pop(key, None)
@@ -344,7 +353,9 @@ class Sessionizer:
         key = (device, root)
         site = self.sites.get(key)
         ts = ev.observed_at
-        if site is not None and (ts - (site.last_seen or ts)).total_seconds() > self.idle_seconds:
+        site_window = self.estimated_gap_seconds if (site is not None and site.is_estimated
+                                                     and ev.is_estimated) else self.idle_seconds
+        if site is not None and (ts - (site.last_seen or ts)).total_seconds() > site_window:
             self._close_site(site, 'idle_timeout', site.last_seen)
             result['closed'].append({'kind': 'site', 'id': site.id, 'mac': site.device_mac,
                                      'domain': site.root_domain})
@@ -404,12 +415,40 @@ class Sessionizer:
         presence['first'] = min(presence['first'], ts)
         presence['last'] = max(presence['last'], ts)
 
-        start = None
-        if flow is not None:
-            start = flow.last_accrued or ts
-            if start > ts:                       # late/duplicate evidence: no interval
-                self.counters['skipped_late'] += 1
-                start = None
+        # Which marker does the interval start from?  A *flow* marker only
+        # exists once that particular socket has been seen twice, but a browser
+        # opens a fresh socket for almost every request - so the site session
+        # carries the marker that makes a multi-connection visit add up.  The
+        # device dimension additionally remembers its own last accrual, so
+        # unnamed traffic still counts towards "online".
+        flow_start = flow.last_accrued if flow is not None else None
+        site_start = site.last_accrued if site is not None else None
+        device_start = presence.get('last_accrued')
+        def _previous(*candidates):
+            # The interval is [last time this thing was seen, now].  A brand-new
+            # flow is stamped with *now*, so markers equal to the current
+            # timestamp must be ignored or every connection would look empty.
+            usable = [c for c in candidates if c is not None and c < ts]
+            return max(usable) if usable else None
+
+        named_start = _previous(site_start, flow_start)
+        device_start_used = _previous(device_start, site_start, flow_start)
+        marker_row = site if (site is not None and site_start is not None
+                              and site_start == named_start) else flow
+        marker_is_estimated = bool(marker_row is not None and marker_row.is_estimated)
+
+        estimated_gap = False
+        start = named_start
+        if start is not None and start > ts:     # late/duplicate evidence
+            self.counters['skipped_late'] += 1
+            start = None
+        if (start is not None and estimated and marker_is_estimated
+                and self.idle_seconds < (ts - start).total_seconds() <= self.estimated_gap_seconds):
+            # Two samples of the same established connection.  The socket
+            # existed in between, so the gap is usage - recorded as estimated,
+            # and capped so an abandoned sample cannot invent hours.
+            estimated_gap = True
+            self.counters['estimated_gaps'] = self.counters.get('estimated_gaps', 0) + 1
         if start is None or ts <= start:
             # still record bytes at the current bucket without time
             if byte_total:
@@ -423,6 +462,10 @@ class Sessionizer:
         # so parallel flows to the same domain are counted as a union and never
         # double counted in the daily rollups.
         targets = [('device', device, device)]
+        if device_start_used is not None and device_start_used <= ts \
+                and (ts - device_start_used).total_seconds() <= self.estimated_gap_seconds:
+            self._accrue_union('device', device, device, device_start_used, ts, source,
+                               bool(estimated or marker_is_estimated), byte_total)
         if app:
             targets.append(('app', device, app))
         if category and category != 'Unknown':
@@ -430,7 +473,9 @@ class Sessionizer:
         if site is not None:
             targets.append(('site', device, site.root_domain))
 
+        estimated = bool(estimated or estimated_gap)
         seen = set()
+        targets = [t for t in targets if t[0] != 'device']
         for dimension, dev, key in targets:
             if (dimension, dev, key) in seen:
                 continue
@@ -438,14 +483,22 @@ class Sessionizer:
             self._accrue_union(dimension, dev, key, start, ts, source, estimated,
                                byte_total if dimension == 'device' else 0)
 
+        if presence.get('last_accrued') is None or ts > presence['last_accrued']:
+            presence['last_accrued'] = ts
         if flow is not None:
             flow.last_accrued = ts
             if flow.first_seen:
                 flow.duration_seconds = int(max(0, (ts - flow.first_seen).total_seconds()))
+                flow.span_seconds = flow.duration_seconds
         if site is not None:
             site.last_accrued = ts
             site.dwell_seconds = int(merged_seconds(
                 self.intervals.get(('site', device, site.root_domain), [])))
+            if site.first_seen:
+                # span = how long the session lasted; dwell = proven active time.
+                # Their difference is quiet time, shown as such, never hidden.
+                site.span_seconds = int(max(0, (ts - site.first_seen).total_seconds()))
+                site.idle_seconds = int(max(0, site.span_seconds - (site.dwell_seconds or 0)))
             site.active_seconds = int(min(self.idle_seconds,
                                           max(0.0, (datetime.utcnow() - (site.last_seen or ts)).total_seconds())))
 
@@ -487,6 +540,7 @@ class Sessionizer:
         flow.closed_at = when + (timedelta(seconds=self.idle_seconds)
                                 if reason == 'idle_timeout' else timedelta())
         flow.duration_seconds = int(max(0, (when - (flow.first_seen or when)).total_seconds()))
+        flow.span_seconds = flow.duration_seconds
         self.counters['flows_closed'] += 1
         self._closed_rows.append(flow)
         self._mirror_flow_to_legacy(flow)
@@ -496,6 +550,9 @@ class Sessionizer:
         site.state = 'closed'
         site.closed_at = when + (timedelta(seconds=self.idle_seconds)
                                  if reason == 'idle_timeout' else timedelta())
+        if site.first_seen:
+            site.span_seconds = int(max(0, (when - site.first_seen).total_seconds()))
+            site.idle_seconds = int(max(0, site.span_seconds - (site.dwell_seconds or 0)))
         self.counters['sites_closed'] += 1
         self._closed_rows.append(site)
         self._mirror_site_to_legacy(site)
@@ -507,7 +564,8 @@ class Sessionizer:
         with self._lock:
             for key, flow in list(self.flows.items()):
                 age = (now - (flow.last_seen or now)).total_seconds()
-                if age > self.idle_seconds:
+                window = self.estimated_gap_seconds if flow.is_estimated else self.idle_seconds
+                if age > window:
                     self._close_flow(flow, 'idle_timeout', flow.last_seen)
                     closed.append({'kind': 'flow', 'id': flow.id, 'mac': flow.device_mac})
                     self.flows.pop(key, None)
@@ -515,7 +573,8 @@ class Sessionizer:
                     flow.state = 'idle'
             for key, site in list(self.sites.items()):
                 age = (now - (site.last_seen or now)).total_seconds()
-                if age > self.idle_seconds:
+                window = self.estimated_gap_seconds if site.is_estimated else self.idle_seconds
+                if age > window:
                     self._close_site(site, 'idle_timeout', site.last_seen)
                     closed.append({'kind': 'site', 'id': site.id, 'mac': site.device_mac,
                                    'domain': site.root_domain})
@@ -696,6 +755,31 @@ class Sessionizer:
         except Exception:
             pass
 
+    def _savepoint(self):
+        """A savepoint around a legacy-mirror write.
+
+        The mirror runs *inside* the engine's transaction, so a constraint
+        violation here (a duplicate device row, a strict NOT NULL column) would
+        poison the whole transaction and silently discard the evidence that is
+        still pending.  A savepoint keeps the damage local.
+        """
+        from contextlib import contextmanager
+
+        @contextmanager
+        def _ctx():
+            session = intel_store.engine_session()
+            nested = session.begin_nested()
+            try:
+                yield session
+                nested.commit()
+            except Exception:
+                try:
+                    nested.rollback()
+                except Exception:
+                    pass
+                raise
+        return _ctx()
+
     def _ensure_legacy_device(self, flow):
         if not self.mirror_legacy or not flow or not flow.device_mac:
             return
@@ -706,39 +790,51 @@ class Sessionizer:
             if not is_valid_mac(flow.device_mac):
                 return
             vendor = vendor_for(flow.device_mac)
-            device = Device.query.filter_by(mac_address=flow.device_mac).first()
-            if device is None:
-                device = Device(mac_address=flow.device_mac, ip_address=flow.src_ip,
-                                hostname=flow.device_mac, vendor=vendor or 'Unknown',
-                                device_type=classify_vendor(vendor),
-                                first_seen=flow.first_seen, last_seen=flow.last_seen, is_active=True)
-                intel_store.engine_session().add(device)
-            else:
-                device.last_seen = flow.last_seen or datetime.utcnow()
-                if flow.src_ip and not device.ip_address:
-                    device.ip_address = flow.src_ip
-                if (not device.vendor or device.vendor == 'Unknown') and vendor:
-                    device.vendor = vendor
-            intel_store.engine_session().flush()
+            with self._savepoint():
+                # engine-session queries: a row created moments ago by this very
+                # transaction is invisible to the request session, which is how
+                # the duplicate device insert used to happen.
+                device = intel_store.equery(Device).filter_by(
+                    mac_address=flow.device_mac).first()
+                if device is None:
+                    device = Device(mac_address=flow.device_mac, ip_address=flow.src_ip,
+                                    hostname=flow.device_mac, vendor=vendor or 'Unknown',
+                                    device_type=classify_vendor(vendor),
+                                    first_seen=flow.first_seen, last_seen=flow.last_seen,
+                                    is_active=True)
+                    intel_store.engine_session().add(device)
+                else:
+                    device.last_seen = flow.last_seen or datetime.utcnow()
+                    if flow.src_ip and not device.ip_address:
+                        device.ip_address = flow.src_ip
+                    if (not device.vendor or device.vendor == 'Unknown') and vendor:
+                        device.vendor = vendor
+                intel_store.engine_session().flush()
 
             if flow.hostname and flow.app and flow.root_domain:
-                app_row = HnApp.query.filter_by(name=flow.app).first()
-                if app_row is None:
-                    cat = HnCategory.query.filter_by(name=flow.category or 'Uncategorized').first()
-                    if cat is None:
-                        cat = HnCategory(name=flow.category or 'Uncategorized',
-                                         description='Auto-created by the intelligence layer')
-                        intel_store.engine_session().add(cat)
+                with self._savepoint():
+                    app_row = intel_store.equery(HnApp).filter_by(name=flow.app).first()
+                    if app_row is None:
+                        cat = intel_store.equery(HnCategory).filter_by(
+                            name=flow.category or 'Uncategorized').first()
+                        if cat is None:
+                            cat = HnCategory(name=flow.category or 'Uncategorized',
+                                             description='Auto-created by the intelligence layer')
+                            intel_store.engine_session().add(cat)
+                            intel_store.engine_session().flush()
+                        app_row = HnApp(category_id=cat.id, name=flow.app,
+                                        slug=flow.app.lower().replace(' ', '-')[:110])
+                        intel_store.engine_session().add(app_row)
                         intel_store.engine_session().flush()
-                    app_row = HnApp(category_id=cat.id, name=flow.app,
-                                    slug=flow.app.lower().replace(' ', '-')[:110])
-                    intel_store.engine_session().add(app_row)
-                    intel_store.engine_session().flush()
-                if not HnRule.query.filter_by(type='domain', value=flow.root_domain).first():
-                    intel_store.engine_session().add(HnRule(app_id=app_row.id, type='domain',
-                                          value=flow.root_domain, source='auto', confidence=0.6))
-        except Exception:
-            pass
+                    existing_rule = intel_store.equery(HnRule).filter_by(
+                        type='domain', value=flow.root_domain).first()
+                    if not existing_rule:
+                        intel_store.engine_session().add(HnRule(
+                            app_id=app_row.id, type='domain', value=flow.root_domain,
+                            source='auto', confidence=0.6))
+        except Exception as exc:
+            if self.health:
+                self.health.note('mirror', error=exc)
 
     def _mirror_flow_to_legacy(self, flow):
         """Write one summary TrafficSession per closed flow (bounded volume)."""
@@ -749,19 +845,21 @@ class Sessionizer:
             self._ensure_legacy_device(flow)
             if (flow.bytes_up or 0) + (flow.bytes_down or 0) == 0 and (flow.obs_count or 0) < 2:
                 return
-            exists = TrafficSession.query.filter_by(
-                src_mac=flow.device_mac, dst_ip=flow.dst_ip, dst_port=flow.dst_port,
-                protocol=flow.protocol, start_time=flow.first_seen).first()
-            if exists:
-                return
-            intel_store.engine_session().add(TrafficSession(
-                src_mac=flow.device_mac, src_ip=flow.src_ip, dst_ip=flow.dst_ip,
-                src_port=flow.src_port, dst_port=flow.dst_port, protocol=flow.protocol,
-                start_time=flow.first_seen, end_time=flow.closed_at or flow.last_seen,
-                bytes_sent=int(flow.bytes_up or 0), bytes_received=int(flow.bytes_down or 0),
-                packet_count=int(flow.packets or 0)))
-        except Exception:
-            pass
+            with self._savepoint():
+                exists = intel_store.equery(TrafficSession).filter_by(
+                    src_mac=flow.device_mac, dst_ip=flow.dst_ip, dst_port=flow.dst_port,
+                    protocol=flow.protocol, start_time=flow.first_seen).first()
+                if exists:
+                    return
+                intel_store.engine_session().add(TrafficSession(
+                    src_mac=flow.device_mac, src_ip=flow.src_ip, dst_ip=flow.dst_ip,
+                    src_port=flow.src_port, dst_port=flow.dst_port, protocol=flow.protocol,
+                    start_time=flow.first_seen, end_time=flow.closed_at or flow.last_seen,
+                    bytes_sent=int(flow.bytes_up or 0), bytes_received=int(flow.bytes_down or 0),
+                    packet_count=int(flow.packets or 0)))
+        except Exception as exc:
+            if self.health:
+                self.health.note('mirror', error=exc)
 
     def _mirror_site_to_legacy(self, site):
         if not self.mirror_legacy or not site or not site.device_mac:
@@ -771,9 +869,11 @@ class Sessionizer:
             from src.models.network import WebsiteVisit
             if not is_valid_mac(site.device_mac):
                 return
-            intel_store.engine_session().add(WebsiteVisit(
-                device_mac=site.device_mac, domain=site.root_domain, url=site.url_last,
-                timestamp=site.first_seen, bytes_transferred=int(site.bytes_total or 0),
-                response_code=200, method='GET'))
-        except Exception:
-            pass
+            with self._savepoint():
+                intel_store.engine_session().add(WebsiteVisit(
+                    device_mac=site.device_mac, domain=site.root_domain, url=site.url_last,
+                    timestamp=site.first_seen, bytes_transferred=int(site.bytes_total or 0),
+                    response_code=200, method='GET'))
+        except Exception as exc:
+            if self.health:
+                self.health.note('mirror', error=exc)

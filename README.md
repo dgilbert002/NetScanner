@@ -14,7 +14,27 @@ Just **double-click `start.bat`** - it handles everything automatically!
 - Opens your web browser to the dashboard
 - Press any key in the command window to stop the server
 
-### Two dashboards
+### Parental views (new)
+
+The intelligence dashboard (`/intel`) now has **People & calendar**, **Alerts**,
+**Searches** and **Games** tabs next to the original eight:
+
+* **People & calendar** – pick a person and a range (today … 6 months) to get
+  totals per category/app/site/device, then open one app's calendar: a day-by-day
+  heat map. Click a day for its sessions with active time, session span, quiet
+  time, device, person, app and URL.
+* **Alerts** – adult content, gambling, VPN/proxy bypass (including proxies the
+  catalogue does not know), long gaming sessions, bedtime activity and optional
+  daily limits. Rules are editable in the UI and stored on the collector.
+* **Searches** – search terms recovered from plain-HTTP search URLs. Encrypted
+  (HTTPS) searches are not readable by any local monitor, and the page says so.
+* **Games** – every service the catalogue classifies as Gaming, per person, with
+  total time and active days.
+
+Everything is stored locally in SQLite; nothing is uploaded and no paid service
+is used.
+
+## Two dashboards
 - **`http://<this-machine>:5002/`** — the classic dashboard (mock/sample data has
   been removed; it now shows real, time-stamped collector output plus a live
   intelligence strip).

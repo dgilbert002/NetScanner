@@ -46,6 +46,34 @@ for _domain, _app, _category, _owner in DOMAIN_CATALOG:
 _CATEGORY_SET = set(CATEGORIES)
 
 
+def app_categories():
+    """{app name (lower): category} for every curated app name.
+
+    App names - not domains - are what the daily rollups store, so the history
+    API uses this to label an app with its category and to answer "show me the
+    games" without guessing from a domain lookup.
+    """
+    mapping = {}
+    for _domain, app, cat, _owner in DOMAIN_CATALOG:
+        if app and cat:
+            mapping.setdefault(app.lower(), cat)
+    return mapping
+
+
+def apps_in_category(category):
+    """App/service names whose catalogue entries are in ``category``.
+
+    Used by the 'games' view: the daily rollups store *app names* (``Roblox``),
+    not domains, so a category filter has to be answered from the catalogue.
+    """
+    wanted = (category or '').lower()
+    names = set()
+    for _domain, app, cat, _owner in DOMAIN_CATALOG:
+        if (cat or '').lower() == wanted and app:
+            names.add(app)
+    return names
+
+
 def root_domain(host):
     """Registrable domain (``r4---sn-x.googlevideo.com`` -> ``googlevideo.com``)."""
     if not host:

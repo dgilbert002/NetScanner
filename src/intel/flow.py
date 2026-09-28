@@ -430,6 +430,67 @@ def parse_http_request(payload):
     return out or None
 
 
+SEARCH_ENGINES = {
+    'google.com': 'q', 'google.co.uk': 'q', 'google.de': 'q', 'google.fr': 'q',
+    'google.ca': 'q', 'google.com.au': 'q', 'google.co.in': 'q', 'google.es': 'q',
+    'google.it': 'q', 'google.co.za': 'q', 'google.ae': 'q', 'google.com.br': 'q',
+    'bing.com': 'q', 'duckduckgo.com': 'q', 'search.brave.com': 'q',
+    'yandex.com': 'text', 'yandex.ru': 'text', 'baidu.com': 'wd',
+    'ecosia.org': 'q', 'startpage.com': 'query', 'mojeek.com': 'q',
+    'yahoo.com': 'p', 'search.yahoo.com': 'p', 'ask.com': 'q',
+    'youtube.com': 'search_query', 'm.youtube.com': 'search_query',
+    'amazon.com': 'k', 'amazon.co.uk': 'k', 'ebay.com': '_nkw',
+    'wikipedia.org': 'search',
+}
+
+# Domains that also appear in URLs from other apps; only treat them as a search
+# when the path really looks like a results page.
+_SEARCH_PATHS = ('/search', '/s', '/results', '/url', '/web', '/query', '/find',
+                 '/search/query')
+
+
+def search_term_from_url(host, path):
+    """Extract (engine, term) from a plain-HTTP request, or ``(None, None)``.
+
+    Search terms are visible only in unencrypted requests - a query sent over
+    HTTPS (which is essentially every modern search) never leaves the browser in
+    a form we can read.  Plain-HTTP searches, and the engine's own unencrypted
+    prefetch/redirect URLs, do come through, so they are captured and shown for
+    what they are.
+    """
+    if not host or not path:
+        return None, None
+    host = host.lower().split(':')[0]
+    engine = None
+    param = None
+    for domain, key in SEARCH_ENGINES.items():
+        if host == domain or host.endswith('.' + domain):
+            engine, param = domain, key
+            break
+    # youtu.be / google redirects carry the query as ?q= even off the main host
+    if not param:
+        for domain, key in SEARCH_ENGINES.items():
+            if host.endswith('.' + domain.split('.')[0] + '.' + domain.split('.')[-1]):
+                engine, param = domain, key
+                break
+    if not engine:
+        return None, None
+    try:
+        from urllib.parse import parse_qs, unquote_plus
+        query = path.split('?', 1)[1] if '?' in path else ''
+        values = parse_qs(query, keep_blank_values=False)
+        term = (values.get(param) or values.get('q') or values.get('query') or [''])[0]
+        term = unquote_plus(term).strip()
+        if not term or len(term) > 200:
+            return engine, None
+        # /url?q=<target> on google is a click-through, not a search term
+        if param == 'q' and engine.startswith('google') and path.startswith('/url'):
+            return engine, None
+        return engine, term
+    except Exception:
+        return engine, None
+
+
 # ---------------------------------------------------------------------------
 # Process attribution (capture host only, free)
 # ---------------------------------------------------------------------------
@@ -628,6 +689,10 @@ class PacketExtractor:
                         ev.http_host = http.get('host')
                         ev.http_path = http.get('path')
                         ev.user_agent = http.get('user_agent')
+                        engine_name, term = search_term_from_url(ev.http_host, ev.http_path)
+                        if term:
+                            ev.detail['search_engine'] = engine_name
+                            ev.detail['search_term'] = term
                         ev.confidence = 0.98
                         ev.detail['referer'] = http.get('referer')
 

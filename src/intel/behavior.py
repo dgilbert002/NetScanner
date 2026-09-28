@@ -484,7 +484,9 @@ class BehaviorEngine:
             person_profile = {p.name: p.profile_id for p in intel_store.equery(IntelPerson).all() if p.profile_id}
             if row is not None:
                 from src.models.network import Device
-                dev = Device.query.filter_by(mac_address=mac).first()
+                # engine-session query: this runs on the worker thread, where
+                # Flask-SQLAlchemy's scoped session may have no app context.
+                dev = intel_store.equery(Device).filter_by(mac_address=mac).first()
                 if dev is not None:
                     import sqlite3
                     import os
