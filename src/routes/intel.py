@@ -747,6 +747,13 @@ def bind_device(person_id):
     row.probability = 0.99 if locked else row.probability
     row.method = 'user_confirmed' if locked else row.method
     row.is_estimated = False if locked else True
+    # Keep the reason visible in the UI and in the score explanation, so a
+    # confirmed binding never looks like a behaviour guess.
+    explanation = json.loads(row.explanation or '{}') if row.explanation else {}
+    explanation['prior_reason'] = 'confirmed' if locked else 'rejected_by_user'
+    explanation['note'] = ('Confirmed by the user' if locked
+                           else 'Rejected by the user - do not suggest this match')
+    row.explanation = json.dumps(explanation)
     db.session.commit()
     return jsonify({'score': row.to_dict(), 'message': 'binding saved'})
 
