@@ -146,7 +146,7 @@ if INTEL_AVAILABLE:
 # Serve the intelligence dashboard
 @app.route('/intel')
 def intel_page():
-    return app.send_static_file('intel.html')
+    return _no_store(app.send_static_file('intel.html'))
 
 # Serve group management page
 @app.route('/groups')
@@ -598,10 +598,21 @@ with app.app_context():
             print(f"⚠️  Could not start intelligence engine: {_engine_err}")
             INTEL_ENGINE = None
 
+def _no_store(response):
+    """Stop browsers caching the HTML shells.
+
+    The dashboards are HTML plus versioned assets; caching the HTML is what makes
+    an applied fix look like it did nothing until a hard refresh.
+    """
+    response.headers['Cache-Control'] = 'no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    return response
+
+
 @app.route('/')
 def serve_dashboard():
     """Serve the main dashboard"""
-    return send_from_directory(app.static_folder, 'index.html')
+    return _no_store(send_from_directory(app.static_folder, 'index.html'))
 
 @app.route('/<path:path>')
 def serve_static(path):
